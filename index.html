@@ -1,0 +1,718 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RUKA-PORRO - Voxel Game in Lapland Taiga</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            overflow: hidden;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(to bottom, #1a1a2e, #0f0f23);
+        }
+
+        #game-container {
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+        }
+
+        canvas {
+            display: block;
+        }
+
+        #ui {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: white;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+            z-index: 100;
+            pointer-events: none;
+        }
+
+        #title {
+            font-size: 2.5em;
+            font-weight: bold;
+            margin-bottom: 5px;
+            color: #b8d4e3;
+        }
+
+        #subtitle {
+            font-size: 1em;
+            color: #8ab4c9;
+            margin-bottom: 20px;
+        }
+
+        #score {
+            font-size: 1.5em;
+            margin-bottom: 10px;
+        }
+
+        #instructions {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            color: white;
+            background: rgba(0,0,0,0.5);
+            padding: 15px 20px;
+            border-radius: 10px;
+            font-size: 0.9em;
+            z-index: 100;
+        }
+
+        #instructions h3 {
+            margin-bottom: 10px;
+            color: #b8d4e3;
+        }
+
+        #instructions p {
+            margin: 5px 0;
+            color: #ccc;
+        }
+
+        #loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-size: 2em;
+            z-index: 200;
+        }
+
+        .key {
+            display: inline-block;
+            background: rgba(255,255,255,0.2);
+            padding: 2px 8px;
+            border-radius: 4px;
+            margin: 0 2px;
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <div id="loading">Loading RUKA-PORRO...</div>
+        <div id="ui">
+            <div id="title">RUKA-PORRO</div>
+            <div id="subtitle">Voxel Game in Lapland Taiga</div>
+            <div id="score">Lichens Collected: <span id="lichen-count">0</span></div>
+        </div>
+        <div id="instructions">
+            <h3>Controls</h3>
+            <p><span class="key">W</span><span class="key">A</span><span class="key">S</span><span class="key">D</span> or <span class="key">Arrow Keys</span> - Move Poro</p>
+            <p><span class="key">Space</span> - Jump</p>
+            <p><span class="key">Mouse</span> - Look around</p>
+            <p>Collect the glowing lichens!</p>
+        </div>
+    </div>
+
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+        }
+    }
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+
+        // Game state
+        let scene, camera, renderer;
+        let poro, ground;
+        let lichens = [];
+        let trees = [];
+        let snowParticles;
+        let score = 0;
+        let keys = {};
+        let velocity = new THREE.Vector3();
+        let isJumping = false;
+        let cameraAngle = 0;
+        let cameraPitch = 0.5;
+        let isPointerLocked = false;
+
+        // Constants
+        const WORLD_SIZE = 100;
+        const PORO_SPEED = 0.15;
+        const JUMP_FORCE = 0.3;
+        const GRAVITY = 0.015;
+        const CAMERA_DISTANCE = 12;
+
+        init();
+        animate();
+
+        function init() {
+            // Scene setup
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x1a1a2e);
+            scene.fog = new THREE.Fog(0x1a1a2e, 30, 80);
+
+            // Camera
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(0, 10, 15);
+
+            // Renderer
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            document.getElementById('game-container').appendChild(renderer.domElement);
+
+            // Lighting
+            const ambientLight = new THREE.AmbientLight(0x4477aa, 0.4);
+            scene.add(ambientLight);
+
+            const moonLight = new THREE.DirectionalLight(0xaaccff, 0.8);
+            moonLight.position.set(50, 100, 50);
+            moonLight.castShadow = true;
+            moonLight.shadow.mapSize.width = 2048;
+            moonLight.shadow.mapSize.height = 2048;
+            moonLight.shadow.camera.near = 0.5;
+            moonLight.shadow.camera.far = 200;
+            moonLight.shadow.camera.left = -50;
+            moonLight.shadow.camera.right = 50;
+            moonLight.shadow.camera.top = 50;
+            moonLight.shadow.camera.bottom = -50;
+            scene.add(moonLight);
+
+            // Aurora effect (point lights)
+            const aurora1 = new THREE.PointLight(0x00ff88, 0.5, 100);
+            aurora1.position.set(0, 40, -30);
+            scene.add(aurora1);
+
+            const aurora2 = new THREE.PointLight(0x8800ff, 0.3, 100);
+            aurora2.position.set(20, 35, -40);
+            scene.add(aurora2);
+
+            // Create world
+            createGround();
+            createPoro();
+            createTrees();
+            createLichens();
+            createSnow();
+            createStars();
+
+            // Event listeners
+            document.addEventListener('keydown', (e) => { keys[e.code] = true; });
+            document.addEventListener('keyup', (e) => { keys[e.code] = false; });
+
+            renderer.domElement.addEventListener('click', () => {
+                renderer.domElement.requestPointerLock();
+            });
+
+            document.addEventListener('pointerlockchange', () => {
+                isPointerLocked = document.pointerLockElement === renderer.domElement;
+            });
+
+            document.addEventListener('mousemove', (e) => {
+                if (isPointerLocked) {
+                    cameraAngle -= e.movementX * 0.003;
+                    cameraPitch = Math.max(0.2, Math.min(1.2, cameraPitch - e.movementY * 0.003));
+                }
+            });
+
+            window.addEventListener('resize', onWindowResize);
+
+            // Hide loading
+            document.getElementById('loading').style.display = 'none';
+        }
+
+        function createGround() {
+            // Snowy ground with voxel-style texture
+            const groundGeometry = new THREE.PlaneGeometry(WORLD_SIZE * 2, WORLD_SIZE * 2, 50, 50);
+
+            // Add some height variation for snow drifts
+            const vertices = groundGeometry.attributes.position.array;
+            for (let i = 0; i < vertices.length; i += 3) {
+                vertices[i + 2] = Math.sin(vertices[i] * 0.1) * Math.cos(vertices[i + 1] * 0.1) * 0.5;
+            }
+            groundGeometry.computeVertexNormals();
+
+            const groundMaterial = new THREE.MeshStandardMaterial({
+                color: 0xe8f4f8,
+                roughness: 0.9,
+                metalness: 0.1
+            });
+
+            ground = new THREE.Mesh(groundGeometry, groundMaterial);
+            ground.rotation.x = -Math.PI / 2;
+            ground.receiveShadow = true;
+            scene.add(ground);
+
+            // Add some snow mounds
+            for (let i = 0; i < 30; i++) {
+                const moundGeometry = new THREE.SphereGeometry(
+                    Math.random() * 2 + 1,
+                    8, 6
+                );
+                const mound = new THREE.Mesh(moundGeometry, groundMaterial);
+                mound.position.set(
+                    (Math.random() - 0.5) * WORLD_SIZE * 1.5,
+                    0,
+                    (Math.random() - 0.5) * WORLD_SIZE * 1.5
+                );
+                mound.scale.y = 0.3;
+                mound.receiveShadow = true;
+                scene.add(mound);
+            }
+        }
+
+        function createPoro() {
+            // Voxel-style Poro (Reindeer)
+            poro = new THREE.Group();
+
+            const bodyMaterial = new THREE.MeshStandardMaterial({ color: 0x8b7355 });
+            const whiteMaterial = new THREE.MeshStandardMaterial({ color: 0xf5f5dc });
+            const darkMaterial = new THREE.MeshStandardMaterial({ color: 0x3d2914 });
+            const noseMaterial = new THREE.MeshStandardMaterial({ color: 0x1a1a1a });
+            const antlerMaterial = new THREE.MeshStandardMaterial({ color: 0x5c4033 });
+
+            // Body (voxel style - boxes)
+            const body = new THREE.Mesh(
+                new THREE.BoxGeometry(2, 1.5, 3),
+                bodyMaterial
+            );
+            body.position.y = 1.5;
+            body.castShadow = true;
+            poro.add(body);
+
+            // White chest
+            const chest = new THREE.Mesh(
+                new THREE.BoxGeometry(1.8, 1, 1),
+                whiteMaterial
+            );
+            chest.position.set(0, 1.3, 1.2);
+            poro.add(chest);
+
+            // Head
+            const head = new THREE.Mesh(
+                new THREE.BoxGeometry(1.2, 1.2, 1.4),
+                bodyMaterial
+            );
+            head.position.set(0, 2.5, 1.8);
+            head.castShadow = true;
+            poro.add(head);
+
+            // Snout
+            const snout = new THREE.Mesh(
+                new THREE.BoxGeometry(0.6, 0.5, 0.6),
+                whiteMaterial
+            );
+            snout.position.set(0, 2.2, 2.6);
+            poro.add(snout);
+
+            // Nose
+            const nose = new THREE.Mesh(
+                new THREE.BoxGeometry(0.3, 0.2, 0.1),
+                noseMaterial
+            );
+            nose.position.set(0, 2.3, 2.95);
+            poro.add(nose);
+
+            // Eyes
+            const eyeGeometry = new THREE.BoxGeometry(0.2, 0.2, 0.1);
+            const leftEye = new THREE.Mesh(eyeGeometry, darkMaterial);
+            leftEye.position.set(-0.35, 2.7, 2.45);
+            poro.add(leftEye);
+
+            const rightEye = new THREE.Mesh(eyeGeometry, darkMaterial);
+            rightEye.position.set(0.35, 2.7, 2.45);
+            poro.add(rightEye);
+
+            // Ears
+            const earGeometry = new THREE.BoxGeometry(0.3, 0.5, 0.2);
+            const leftEar = new THREE.Mesh(earGeometry, bodyMaterial);
+            leftEar.position.set(-0.5, 3.2, 1.6);
+            leftEar.rotation.z = -0.3;
+            poro.add(leftEar);
+
+            const rightEar = new THREE.Mesh(earGeometry, bodyMaterial);
+            rightEar.position.set(0.5, 3.2, 1.6);
+            rightEar.rotation.z = 0.3;
+            poro.add(rightEar);
+
+            // Antlers (voxel style)
+            createAntler(poro, -0.4, 3.3, 1.3, antlerMaterial, 1);
+            createAntler(poro, 0.4, 3.3, 1.3, antlerMaterial, -1);
+
+            // Legs
+            const legGeometry = new THREE.BoxGeometry(0.4, 1.2, 0.4);
+            const legPositions = [
+                [-0.6, 0.6, 0.8],
+                [0.6, 0.6, 0.8],
+                [-0.6, 0.6, -0.8],
+                [0.6, 0.6, -0.8]
+            ];
+
+            legPositions.forEach(pos => {
+                const leg = new THREE.Mesh(legGeometry, darkMaterial);
+                leg.position.set(...pos);
+                leg.castShadow = true;
+                poro.add(leg);
+
+                // Hooves
+                const hoof = new THREE.Mesh(
+                    new THREE.BoxGeometry(0.45, 0.2, 0.45),
+                    noseMaterial
+                );
+                hoof.position.set(pos[0], 0.1, pos[2]);
+                poro.add(hoof);
+            });
+
+            // Tail
+            const tail = new THREE.Mesh(
+                new THREE.BoxGeometry(0.4, 0.4, 0.3),
+                whiteMaterial
+            );
+            tail.position.set(0, 1.8, -1.6);
+            poro.add(tail);
+
+            poro.position.set(0, 0, 0);
+            scene.add(poro);
+        }
+
+        function createAntler(parent, x, y, z, material, side) {
+            const antlerGroup = new THREE.Group();
+
+            // Main stem
+            const stem = new THREE.Mesh(
+                new THREE.BoxGeometry(0.15, 1.2, 0.15),
+                material
+            );
+            stem.position.y = 0.6;
+            antlerGroup.add(stem);
+
+            // Branch 1
+            const branch1 = new THREE.Mesh(
+                new THREE.BoxGeometry(0.12, 0.6, 0.12),
+                material
+            );
+            branch1.position.set(side * 0.2, 0.8, 0.15);
+            branch1.rotation.z = side * 0.5;
+            antlerGroup.add(branch1);
+
+            // Branch 2
+            const branch2 = new THREE.Mesh(
+                new THREE.BoxGeometry(0.12, 0.4, 0.12),
+                material
+            );
+            branch2.position.set(side * 0.15, 1.1, -0.1);
+            branch2.rotation.z = side * 0.3;
+            antlerGroup.add(branch2);
+
+            antlerGroup.position.set(x, y, z);
+            antlerGroup.rotation.x = -0.2;
+            parent.add(antlerGroup);
+        }
+
+        function createTrees() {
+            // Pine trees (voxel style)
+            for (let i = 0; i < 80; i++) {
+                const tree = createPineTree();
+                let x, z;
+                do {
+                    x = (Math.random() - 0.5) * WORLD_SIZE * 1.8;
+                    z = (Math.random() - 0.5) * WORLD_SIZE * 1.8;
+                } while (Math.abs(x) < 5 && Math.abs(z) < 5); // Keep center clear
+
+                tree.position.set(x, 0, z);
+                tree.rotation.y = Math.random() * Math.PI * 2;
+                scene.add(tree);
+                trees.push(tree);
+            }
+        }
+
+        function createPineTree() {
+            const tree = new THREE.Group();
+
+            const trunkMaterial = new THREE.MeshStandardMaterial({ color: 0x4a3728 });
+            const leavesMaterial = new THREE.MeshStandardMaterial({ color: 0x1a472a });
+            const snowMaterial = new THREE.MeshStandardMaterial({ color: 0xf0f8ff });
+
+            const height = Math.random() * 4 + 6;
+
+            // Trunk
+            const trunk = new THREE.Mesh(
+                new THREE.BoxGeometry(0.8, height * 0.4, 0.8),
+                trunkMaterial
+            );
+            trunk.position.y = height * 0.2;
+            trunk.castShadow = true;
+            tree.add(trunk);
+
+            // Foliage layers (cone-like voxel style)
+            const layers = 4;
+            for (let i = 0; i < layers; i++) {
+                const layerSize = (layers - i) * 1.2 + 1;
+                const layerHeight = height * 0.3 + i * height * 0.18;
+
+                const foliage = new THREE.Mesh(
+                    new THREE.BoxGeometry(layerSize, height * 0.2, layerSize),
+                    leavesMaterial
+                );
+                foliage.position.y = layerHeight;
+                foliage.castShadow = true;
+                tree.add(foliage);
+
+                // Snow on top
+                if (Math.random() > 0.3) {
+                    const snow = new THREE.Mesh(
+                        new THREE.BoxGeometry(layerSize * 0.9, 0.15, layerSize * 0.9),
+                        snowMaterial
+                    );
+                    snow.position.y = layerHeight + height * 0.1 + 0.1;
+                    tree.add(snow);
+                }
+            }
+
+            // Top
+            const top = new THREE.Mesh(
+                new THREE.BoxGeometry(0.6, height * 0.15, 0.6),
+                leavesMaterial
+            );
+            top.position.y = height * 0.9;
+            tree.add(top);
+
+            return tree;
+        }
+
+        function createLichens() {
+            // Glowing lichens to collect
+            const lichenMaterial = new THREE.MeshStandardMaterial({
+                color: 0x90ee90,
+                emissive: 0x40ff40,
+                emissiveIntensity: 0.5
+            });
+
+            for (let i = 0; i < 20; i++) {
+                const lichen = new THREE.Group();
+
+                // Multiple small boxes for lichen cluster
+                for (let j = 0; j < 5; j++) {
+                    const part = new THREE.Mesh(
+                        new THREE.BoxGeometry(0.3, 0.2, 0.3),
+                        lichenMaterial
+                    );
+                    part.position.set(
+                        (Math.random() - 0.5) * 0.5,
+                        Math.random() * 0.1,
+                        (Math.random() - 0.5) * 0.5
+                    );
+                    lichen.add(part);
+                }
+
+                // Point light for glow
+                const glow = new THREE.PointLight(0x90ee90, 0.5, 5);
+                glow.position.y = 0.5;
+                lichen.add(glow);
+
+                let x, z;
+                do {
+                    x = (Math.random() - 0.5) * WORLD_SIZE;
+                    z = (Math.random() - 0.5) * WORLD_SIZE;
+                } while (Math.abs(x) < 3 && Math.abs(z) < 3);
+
+                lichen.position.set(x, 0.1, z);
+                lichen.userData.collected = false;
+                scene.add(lichen);
+                lichens.push(lichen);
+            }
+        }
+
+        function createSnow() {
+            const snowGeometry = new THREE.BufferGeometry();
+            const snowCount = 2000;
+            const positions = new Float32Array(snowCount * 3);
+
+            for (let i = 0; i < snowCount * 3; i += 3) {
+                positions[i] = (Math.random() - 0.5) * WORLD_SIZE * 2;
+                positions[i + 1] = Math.random() * 50;
+                positions[i + 2] = (Math.random() - 0.5) * WORLD_SIZE * 2;
+            }
+
+            snowGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+
+            const snowMaterial = new THREE.PointsMaterial({
+                color: 0xffffff,
+                size: 0.2,
+                transparent: true,
+                opacity: 0.8
+            });
+
+            snowParticles = new THREE.Points(snowGeometry, snowMaterial);
+            scene.add(snowParticles);
+        }
+
+        function createStars() {
+            const starGeometry = new THREE.BufferGeometry();
+            const starCount = 1000;
+            const positions = new Float32Array(starCount * 3);
+
+            for (let i = 0; i < starCount * 3; i += 3) {
+                const theta = Math.random() * Math.PI * 2;
+                const phi = Math.random() * Math.PI * 0.4; // Only upper hemisphere
+                const r = 200;
+
+                positions[i] = r * Math.sin(phi) * Math.cos(theta);
+                positions[i + 1] = r * Math.cos(phi) + 50;
+                positions[i + 2] = r * Math.sin(phi) * Math.sin(theta);
+            }
+
+            starGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+
+            const starMaterial = new THREE.PointsMaterial({
+                color: 0xffffff,
+                size: 0.5,
+                transparent: true,
+                opacity: 0.9
+            });
+
+            const stars = new THREE.Points(starGeometry, starMaterial);
+            scene.add(stars);
+        }
+
+        function updatePoro() {
+            // Movement direction based on camera
+            const moveDirection = new THREE.Vector3();
+
+            if (keys['KeyW'] || keys['ArrowUp']) moveDirection.z -= 1;
+            if (keys['KeyS'] || keys['ArrowDown']) moveDirection.z += 1;
+            if (keys['KeyA'] || keys['ArrowLeft']) moveDirection.x -= 1;
+            if (keys['KeyD'] || keys['ArrowRight']) moveDirection.x += 1;
+
+            // Rotate movement direction based on camera angle
+            if (moveDirection.length() > 0) {
+                moveDirection.normalize();
+                const angle = cameraAngle;
+                const rotatedX = moveDirection.x * Math.cos(angle) - moveDirection.z * Math.sin(angle);
+                const rotatedZ = moveDirection.x * Math.sin(angle) + moveDirection.z * Math.cos(angle);
+
+                velocity.x = rotatedX * PORO_SPEED;
+                velocity.z = rotatedZ * PORO_SPEED;
+
+                // Rotate poro to face movement direction
+                poro.rotation.y = Math.atan2(rotatedX, rotatedZ);
+            } else {
+                velocity.x *= 0.9;
+                velocity.z *= 0.9;
+            }
+
+            // Jump
+            if ((keys['Space'] || keys['KeySpace']) && !isJumping) {
+                velocity.y = JUMP_FORCE;
+                isJumping = true;
+            }
+
+            // Gravity
+            velocity.y -= GRAVITY;
+
+            // Apply velocity
+            poro.position.add(velocity);
+
+            // Ground collision
+            if (poro.position.y <= 0) {
+                poro.position.y = 0;
+                velocity.y = 0;
+                isJumping = false;
+            }
+
+            // World bounds
+            poro.position.x = Math.max(-WORLD_SIZE, Math.min(WORLD_SIZE, poro.position.x));
+            poro.position.z = Math.max(-WORLD_SIZE, Math.min(WORLD_SIZE, poro.position.z));
+
+            // Bobbing animation when moving
+            if (Math.abs(velocity.x) > 0.01 || Math.abs(velocity.z) > 0.01) {
+                poro.children.forEach((child, i) => {
+                    if (i >= 10 && i <= 13) { // Legs
+                        child.position.y = 0.6 + Math.sin(Date.now() * 0.015 + i) * 0.1;
+                    }
+                });
+            }
+        }
+
+        function updateCamera() {
+            const targetX = poro.position.x + Math.sin(cameraAngle) * CAMERA_DISTANCE;
+            const targetZ = poro.position.z + Math.cos(cameraAngle) * CAMERA_DISTANCE;
+            const targetY = poro.position.y + CAMERA_DISTANCE * cameraPitch;
+
+            camera.position.lerp(new THREE.Vector3(targetX, targetY, targetZ), 0.1);
+            camera.lookAt(poro.position.x, poro.position.y + 2, poro.position.z);
+        }
+
+        function updateSnow() {
+            const positions = snowParticles.geometry.attributes.position.array;
+
+            for (let i = 0; i < positions.length; i += 3) {
+                positions[i + 1] -= 0.05; // Fall speed
+                positions[i] += Math.sin(Date.now() * 0.001 + i) * 0.01; // Drift
+
+                if (positions[i + 1] < 0) {
+                    positions[i + 1] = 50;
+                    positions[i] = poro.position.x + (Math.random() - 0.5) * WORLD_SIZE;
+                    positions[i + 2] = poro.position.z + (Math.random() - 0.5) * WORLD_SIZE;
+                }
+            }
+
+            snowParticles.geometry.attributes.position.needsUpdate = true;
+        }
+
+        function checkCollisions() {
+            lichens.forEach((lichen, index) => {
+                if (!lichen.userData.collected) {
+                    const distance = poro.position.distanceTo(lichen.position);
+                    if (distance < 2) {
+                        lichen.userData.collected = true;
+                        scene.remove(lichen);
+                        score++;
+                        document.getElementById('lichen-count').textContent = score;
+
+                        // Spawn new lichen
+                        setTimeout(() => {
+                            lichen.position.set(
+                                (Math.random() - 0.5) * WORLD_SIZE,
+                                0.1,
+                                (Math.random() - 0.5) * WORLD_SIZE
+                            );
+                            lichen.userData.collected = false;
+                            scene.add(lichen);
+                        }, 3000);
+                    }
+                }
+            });
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            updatePoro();
+            updateCamera();
+            updateSnow();
+            checkCollisions();
+
+            // Animate lichens (gentle floating)
+            lichens.forEach((lichen, i) => {
+                if (!lichen.userData.collected) {
+                    lichen.position.y = 0.1 + Math.sin(Date.now() * 0.003 + i) * 0.1;
+                    lichen.rotation.y += 0.01;
+                }
+            });
+
+            renderer.render(scene, camera);
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+    </script>
+</body>
+</html>
