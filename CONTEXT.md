@@ -20,13 +20,17 @@ RUKA PORRO VOXL is a browser-based 3D adventure game built with Three.js. The pl
 ### Current State
 
 The game is fully playable with:
-- Complete terrain with mountains and hills
-- 9 NPCs with dialogue systems
+- Massive 4000x4000 procedurally generated world
+- Complete terrain with mountains, hills, lakes, and forests
+- 9 NPCs with AI-powered dialogue systems (Anthropic Claude, Google Gemini)
 - Survival mechanics (health, energy, warmth, hunger)
 - Day/night cycle with Aurora Borealis
 - Weather effects (snow particles)
-- Third-person camera with zoom
+- Advanced third-person camera with 3 modes (Orbit, Cinematic, First Person)
+- Environmental audio (wind, water, bird sounds)
+- Animated Poro character with moving legs and cute eyes
 - Minimap navigation
+- Voice input support for NPC dialogue
 
 ---
 
@@ -256,10 +260,9 @@ Trust changes through:
 ### Current Limitations
 
 1. **No Save System**: Game resets on refresh
-2. **Static Dialogue**: Pre-written, not AI-generated yet
-3. **No Sound**: Visual-only experience currently
-4. **Single Biome**: Only snow/taiga environment
-5. **No Multiplayer**: Single-player only
+2. **Single Biome**: Only snow/taiga environment
+3. **No Multiplayer**: Single-player only
+4. **API Keys Required**: AI dialogue features need Anthropic/Gemini/ElevenLabs API keys in .env file
 
 ### Technical Debt
 
@@ -515,4 +518,4 @@ https://github.com/Maca2024/RUKA-PORRO
 ---
 
 *Last Updated: January 2026*
-*Version: 2.0 (Optimized)*
+*Version: 3.0 (AI Edition with Advanced Controls)*

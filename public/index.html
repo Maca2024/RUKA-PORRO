@@ -340,13 +340,14 @@
 
         <div id="controls">
             <h4>Controls</h4>
-            <p>Mouse - Look around</p>
+            <p>Mouse - Orbit camera around Poro</p>
             <p>Scroll - Zoom in/out</p>
-            <p>WASD / Arrows - Move</p>
+            <p>Arrows/WASD - Move</p>
             <p>SPACE - Jump</p>
             <p>SHIFT - Sprint</p>
-            <p>E - Interact / Eat</p>
-            <p>V - Voice chat (in dialogue)</p>
+            <p>Right Click - Eat lichen</p>
+            <p>V - Talk to NPC</p>
+            <p>C - Camera mode</p>
             <p>ESC - Exit dialogue</p>
         </div>
 
@@ -370,7 +371,19 @@
         </div>
     </div>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://unpkg.com/three@0.152.0/build/three.min.js"></script>
+    <script>
+        window.onerror = function(msg, url, line, col, error) {
+            const errorDiv = document.createElement('div');
+            errorDiv.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:red;color:white;padding:20px;z-index:9999;max-width:80%;font-family:monospace;';
+            errorDiv.innerHTML = '<h3>ERROR:</h3><p>' + msg + '</p><p>File: ' + url + '</p><p>Line: ' + line + '</p>';
+            document.body.appendChild(errorDiv);
+            console.error('Game Error:', msg, url, line, error);
+            return false;
+        };
+        console.log('THREE loaded:', typeof THREE !== 'undefined');
+        if(typeof THREE !== 'undefined') console.log('THREE.CapsuleGeometry:', typeof THREE.CapsuleGeometry);
+    </script>
     <script src="ai-engine.js"></script>
     <script src="game.js"></script>
 </body>

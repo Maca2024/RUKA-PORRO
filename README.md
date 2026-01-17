@@ -3,7 +3,7 @@
 <div align="center">
 
 ![PORO Banner](https://img.shields.io/badge/PORO-Taiga%20Adventure-blue?style=for-the-badge&logo=data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZmlsbD0id2hpdGUiIGQ9Ik0xMiAyQzYuNDggMiAyIDYuNDggMiAxMnM0LjQ4IDEwIDEwIDEwIDEwLTQuNDggMTAtMTBTMTcuNTIgMiAxMiAyem0wIDE4Yy00LjQxIDAtOC0zLjU5LTgtOHMzLjU5LTggOC04IDggMy41OSA4IDgtMy41OSA4LTggOHoiLz48L3N2Zz4=)
-![Three.js](https://img.shields.io/badge/Three.js-r128-black?style=for-the-badge&logo=three.js)
+![Three.js](https://img.shields.io/badge/Three.js-r152-black?style=for-the-badge&logo=three.js)
 ![Node.js](https://img.shields.io/badge/Node.js-18+-green?style=for-the-badge&logo=node.js)
 ![Docker](https://img.shields.io/badge/Docker-Ready-blue?style=for-the-badge&logo=docker)
 ![License](https://img.shields.io/badge/License-MIT-yellow?style=for-the-badge)
@@ -46,7 +46,8 @@ The game combines:
 - **Survival mechanics** - Manage health, energy, warmth, and hunger
 - **AI-driven narratives** - NPCs with unique personalities powered by LLM technology
 - **Dynamic environments** - Day/night cycles, Aurora Borealis, and weather effects
-- **Exploration** - A vast 400x400 unit procedurally enhanced world with mountains and valleys
+- **Exploration** - A vast 4000x4000 unit procedurally generated world with mountains, valleys, and lakes
+- **Environmental Audio** - Dynamic wind, water, and bird sounds
 
 ---
 
@@ -282,30 +283,42 @@ npm run dev
 
 | Key | Action |
 |-----|--------|
-| `W` / `Arrow Up` | Move forward |
-| `S` / `Arrow Down` | Move backward |
+| `W` / `Arrow Up` | Move forward (away from camera) |
+| `S` / `Arrow Down` | Move backward (toward camera) |
 | `A` / `Arrow Left` | Move left |
 | `D` / `Arrow Right` | Move right |
 | `Space` | Jump |
 | `Shift` | Sprint (hold) |
-| `E` | Eat lichen / Interact with NPC |
+| `V` | Talk to nearby NPC |
+| `C` | Toggle camera mode (Orbit / Cinematic / First Person) |
+| `Escape` | Exit dialogue |
 
 ### Mouse Controls
 
 | Action | Effect |
 |--------|--------|
-| Move mouse | Look around (when cursor locked) |
+| Move mouse | Orbit camera around Poro |
 | Scroll wheel | Zoom in/out camera |
 | Left click | Lock cursor to game |
-| `Escape` | Unlock cursor |
+| Right click | Eat nearby lichen |
 
 ### Camera System
 
-The game features a third-person camera that:
-- Follows the player smoothly
-- Can be zoomed from 5 to 30 units distance
-- Orbits around the player with mouse movement
-- Has collision detection with terrain
+The game features an advanced third-person camera with three modes:
+- **Orbit Mode**: Camera orbits smoothly around the Poro, scroll to zoom
+- **Cinematic Mode**: Slower, more dramatic camera movements
+- **First Person**: View through the Poro's eyes
+
+The Poro always faces away from the camera, so:
+- Moving forward shows the Poro's back
+- Moving backward shows the Poro's face with cute eyes
+
+### Audio System
+
+Dynamic environmental audio:
+- **Wind**: Volume increases with height and speed
+- **Water**: Audible near lakes
+- **Bird sounds**: Random chirps in the forest
 
 ---
 

@@ -490,8 +490,22 @@ class PoroGame {
             onGround: false
         };
 
+        // Camera System
+        this.cameraMode = 'orbit'; // 'orbit', 'firstPerson', 'cinematic'
         this.cameraDistance = 15;
-        this.cameraHeight = 8;
+        this.cameraHeight = 4;
+        this.cameraAngleX = 0.5; // Vertical angle (0.2-1.4 range, 0.5 = nice angle)
+        this.cameraAngleY = 0; // Horizontal orbit angle
+        this.targetCameraDistance = 15;
+        this.targetCameraAngleX = 0.5;
+        this.targetCameraAngleY = 0;
+        this.cameraSmoothness = 0.1;
+        this.cameraShake = 0;
+
+        // Audio System
+        this.audioContext = null;
+        this.audioSources = {};
+        this.audioInitialized = false;
 
         this.stats = {
             health: 100,
@@ -561,6 +575,7 @@ class PoroGame {
         this.createBirds();
 
         this.initializeAI();
+        this.initializeAudio();
 
         this.setupEventListeners();
 
@@ -591,7 +606,10 @@ class PoroGame {
 
     createReindeer() {
         this.reindeer = new THREE.Group();
+        this.legs = [];
+        this.legPhase = 0;
 
+        // Body
         const bodyGeom = new THREE.CapsuleGeometry(0.5, 1.2, 4, 8);
         const bodyMat = new THREE.MeshLambertMaterial({ color: 0x8B7355 });
         const body = new THREE.Mesh(bodyGeom, bodyMat);
@@ -599,11 +617,53 @@ class PoroGame {
         body.position.y = 0.8;
         this.reindeer.add(body);
 
+        // Head
         const headGeom = new THREE.SphereGeometry(0.35, 8, 6);
-        const head = new THREE.Mesh(headGeom, bodyMat);
-        head.position.set(0.9, 1.1, 0);
-        this.reindeer.add(head);
+        this.head = new THREE.Mesh(headGeom, bodyMat);
+        this.head.position.set(0.9, 1.1, 0);
+        this.reindeer.add(this.head);
 
+        // EYES - Big cute eyes!
+        const eyeWhiteGeom = new THREE.SphereGeometry(0.12, 8, 8);
+        const eyeWhiteMat = new THREE.MeshLambertMaterial({ color: 0xFFFFFF });
+        const eyePupilGeom = new THREE.SphereGeometry(0.07, 8, 8);
+        const eyePupilMat = new THREE.MeshLambertMaterial({ color: 0x1a1a1a });
+        const eyeShineGeom = new THREE.SphereGeometry(0.025, 6, 6);
+        const eyeShineMat = new THREE.MeshBasicMaterial({ color: 0xFFFFFF });
+
+        // Left eye
+        const leftEye = new THREE.Group();
+        const leftWhite = new THREE.Mesh(eyeWhiteGeom, eyeWhiteMat);
+        const leftPupil = new THREE.Mesh(eyePupilGeom, eyePupilMat);
+        leftPupil.position.x = 0.05;
+        const leftShine = new THREE.Mesh(eyeShineGeom, eyeShineMat);
+        leftShine.position.set(0.08, 0.03, 0.03);
+        leftEye.add(leftWhite, leftPupil, leftShine);
+        leftEye.position.set(1.15, 1.2, 0.15);
+        this.reindeer.add(leftEye);
+
+        // Right eye
+        const rightEye = new THREE.Group();
+        const rightWhite = new THREE.Mesh(eyeWhiteGeom, eyeWhiteMat);
+        const rightPupil = new THREE.Mesh(eyePupilGeom, eyePupilMat);
+        rightPupil.position.x = 0.05;
+        const rightShine = new THREE.Mesh(eyeShineGeom, eyeShineMat);
+        rightShine.position.set(0.08, 0.03, -0.03);
+        rightEye.add(rightWhite, rightPupil, rightShine);
+        rightEye.position.set(1.15, 1.2, -0.15);
+        this.reindeer.add(rightEye);
+
+        // Store eye position for first-person camera
+        this.eyePosition = new THREE.Vector3(1.15, 1.25, 0);
+
+        // Nose
+        const noseGeom = new THREE.SphereGeometry(0.08, 6, 6);
+        const noseMat = new THREE.MeshLambertMaterial({ color: 0x2a2a2a });
+        const nose = new THREE.Mesh(noseGeom, noseMat);
+        nose.position.set(1.25, 1.05, 0);
+        this.reindeer.add(nose);
+
+        // Antlers
         const antlerMat = new THREE.MeshLambertMaterial({ color: 0x5C4033 });
         [-0.25, 0.25].forEach(z => {
             const antlerGroup = new THREE.Group();
@@ -612,18 +672,56 @@ class PoroGame {
             main.position.y = 0.4;
             main.rotation.z = z > 0 ? 0.3 : -0.3;
             antlerGroup.add(main);
+
+            // Add branches to antlers
+            const branchGeom = new THREE.CylinderGeometry(0.02, 0.03, 0.3, 4);
+            const branch1 = new THREE.Mesh(branchGeom, antlerMat);
+            branch1.position.set(0, 0.5, z > 0 ? 0.1 : -0.1);
+            branch1.rotation.z = z > 0 ? -0.5 : 0.5;
+            antlerGroup.add(branch1);
+
             antlerGroup.position.set(0.8, 1.4, z);
             this.reindeer.add(antlerGroup);
         });
 
+        // ANIMATED LEGS - stored for animation
         const legGeom = new THREE.CylinderGeometry(0.08, 0.06, 0.8, 6);
         const legMat = new THREE.MeshLambertMaterial({ color: 0x6B5344 });
-        [[0.5, 0.4, 0.25], [0.5, 0.4, -0.25], [-0.5, 0.4, 0.25], [-0.5, 0.4, -0.25]].forEach(pos => {
-            const leg = new THREE.Mesh(legGeom, legMat);
-            leg.position.set(...pos);
-            this.reindeer.add(leg);
+        const hoofGeom = new THREE.CylinderGeometry(0.07, 0.09, 0.1, 6);
+        const hoofMat = new THREE.MeshLambertMaterial({ color: 0x2a2a2a });
+
+        const legPositions = [
+            { x: 0.4, z: 0.2, name: 'frontLeft' },
+            { x: 0.4, z: -0.2, name: 'frontRight' },
+            { x: -0.4, z: 0.2, name: 'backLeft' },
+            { x: -0.4, z: -0.2, name: 'backRight' }
+        ];
+
+        legPositions.forEach((pos, index) => {
+            const legGroup = new THREE.Group();
+
+            // Upper leg
+            const upperLeg = new THREE.Mesh(legGeom, legMat);
+            upperLeg.position.y = -0.2;
+            legGroup.add(upperLeg);
+
+            // Hoof
+            const hoof = new THREE.Mesh(hoofGeom, hoofMat);
+            hoof.position.y = -0.65;
+            legGroup.add(hoof);
+
+            legGroup.position.set(pos.x, 0.8, pos.z);
+            legGroup.userData = {
+                name: pos.name,
+                baseY: 0.8,
+                phase: index % 2 === 0 ? 0 : Math.PI // Alternate legs
+            };
+
+            this.reindeer.add(legGroup);
+            this.legs.push(legGroup);
         });
 
+        // Belly
         const bellyGeom = new THREE.SphereGeometry(0.4, 8, 6);
         const bellyMat = new THREE.MeshLambertMaterial({ color: 0xDDD5C8 });
         const belly = new THREE.Mesh(bellyGeom, bellyMat);
@@ -631,7 +729,40 @@ class PoroGame {
         belly.scale.set(1.5, 0.5, 0.8);
         this.reindeer.add(belly);
 
+        // Tail
+        const tailGeom = new THREE.SphereGeometry(0.15, 6, 6);
+        const tailMat = new THREE.MeshLambertMaterial({ color: 0xDDD5C8 });
+        const tail = new THREE.Mesh(tailGeom, tailMat);
+        tail.position.set(-0.9, 0.9, 0);
+        tail.scale.set(1, 0.7, 0.7);
+        this.reindeer.add(tail);
+
         this.scene.add(this.reindeer);
+    }
+
+    animateLegs(delta, isMoving, speed) {
+        if (!this.legs || this.legs.length === 0) return;
+
+        if (isMoving) {
+            this.legPhase += delta * speed * 0.8;
+
+            this.legs.forEach((leg, index) => {
+                const phase = this.legPhase + leg.userData.phase;
+
+                // Leg swing (rotation)
+                leg.rotation.x = Math.sin(phase) * 0.4;
+
+                // Leg lift (position)
+                const lift = Math.max(0, Math.sin(phase)) * 0.1;
+                leg.position.y = leg.userData.baseY + lift;
+            });
+        } else {
+            // Return to neutral position smoothly
+            this.legs.forEach(leg => {
+                leg.rotation.x *= 0.9;
+                leg.position.y += (leg.userData.baseY - leg.position.y) * 0.1;
+            });
+        }
     }
 
     createNPCs() {
@@ -920,6 +1051,168 @@ class PoroGame {
         }
     }
 
+    initializeAudio() {
+        // Create audio context on first user interaction
+        const initAudioContext = () => {
+            if (this.audioInitialized) return;
+
+            try {
+                this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+
+                // Create ambient sound nodes
+                this.createAmbientSounds();
+                this.audioInitialized = true;
+                console.log('Audio system initialized');
+
+                // Remove listeners after init
+                document.removeEventListener('click', initAudioContext);
+                document.removeEventListener('keydown', initAudioContext);
+            } catch (e) {
+                console.warn('Audio not supported:', e);
+            }
+        };
+
+        document.addEventListener('click', initAudioContext);
+        document.addEventListener('keydown', initAudioContext);
+    }
+
+    createAmbientSounds() {
+        if (!this.audioContext) return;
+
+        // Wind sound - procedural white noise with filtering
+        const windGain = this.audioContext.createGain();
+        windGain.gain.value = 0.15;
+        windGain.connect(this.audioContext.destination);
+
+        const windFilter = this.audioContext.createBiquadFilter();
+        windFilter.type = 'lowpass';
+        windFilter.frequency.value = 400;
+        windFilter.connect(windGain);
+
+        // Create wind noise
+        const bufferSize = 2 * this.audioContext.sampleRate;
+        const noiseBuffer = this.audioContext.createBuffer(1, bufferSize, this.audioContext.sampleRate);
+        const output = noiseBuffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) {
+            output[i] = Math.random() * 2 - 1;
+        }
+
+        const windNoise = this.audioContext.createBufferSource();
+        windNoise.buffer = noiseBuffer;
+        windNoise.loop = true;
+        windNoise.connect(windFilter);
+        windNoise.start();
+
+        this.audioSources.wind = { source: windNoise, gain: windGain, filter: windFilter };
+
+        // Bird chirps - periodic oscillator bursts
+        this.scheduleBirdSounds();
+
+        // Water sound (near lakes) - filtered noise
+        const waterGain = this.audioContext.createGain();
+        waterGain.gain.value = 0;
+        waterGain.connect(this.audioContext.destination);
+
+        const waterFilter = this.audioContext.createBiquadFilter();
+        waterFilter.type = 'bandpass';
+        waterFilter.frequency.value = 800;
+        waterFilter.Q.value = 0.5;
+        waterFilter.connect(waterGain);
+
+        const waterNoise = this.audioContext.createBufferSource();
+        waterNoise.buffer = noiseBuffer;
+        waterNoise.loop = true;
+        waterNoise.connect(waterFilter);
+        waterNoise.start();
+
+        this.audioSources.water = { source: waterNoise, gain: waterGain };
+
+        console.log('Ambient sounds created');
+    }
+
+    scheduleBirdSounds() {
+        if (!this.audioContext || !this.audioInitialized) return;
+
+        const playBirdChirp = () => {
+            if (!this.audioContext || this.audioContext.state === 'closed') return;
+
+            const osc = this.audioContext.createOscillator();
+            const gain = this.audioContext.createGain();
+
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(800 + Math.random() * 1200, this.audioContext.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(
+                400 + Math.random() * 800,
+                this.audioContext.currentTime + 0.1
+            );
+
+            gain.gain.setValueAtTime(0, this.audioContext.currentTime);
+            gain.gain.linearRampToValueAtTime(0.05, this.audioContext.currentTime + 0.02);
+            gain.gain.exponentialRampToValueAtTime(0.001, this.audioContext.currentTime + 0.15);
+
+            osc.connect(gain);
+            gain.connect(this.audioContext.destination);
+
+            osc.start();
+            osc.stop(this.audioContext.currentTime + 0.15);
+
+            // Schedule next chirp
+            const nextDelay = 2000 + Math.random() * 8000;
+            setTimeout(playBirdChirp, nextDelay);
+        };
+
+        // Start bird sounds with random delay
+        setTimeout(playBirdChirp, 1000 + Math.random() * 3000);
+    }
+
+    updateAudio() {
+        if (!this.audioInitialized || !this.audioSources.wind) return;
+
+        // Adjust wind based on height and speed
+        const playerSpeed = Math.sqrt(
+            this.player.velocity.x ** 2 + this.player.velocity.z ** 2
+        );
+        const heightFactor = Math.min(1, this.player.position.y / 50);
+        const windVolume = 0.1 + heightFactor * 0.15 + playerSpeed * 0.01;
+        this.audioSources.wind.gain.gain.setTargetAtTime(
+            Math.min(0.4, windVolume),
+            this.audioContext.currentTime,
+            0.3
+        );
+
+        // Wind filter based on sprint
+        const isSprinting = this.keys['ShiftLeft'] || this.keys['ShiftRight'];
+        this.audioSources.wind.filter.frequency.setTargetAtTime(
+            isSprinting ? 600 : 350,
+            this.audioContext.currentTime,
+            0.2
+        );
+
+        // Water sound near lakes
+        if (this.audioSources.water) {
+            let nearWater = false;
+            for (const lake of this.chunkManager.lakes) {
+                const dist = Math.sqrt(
+                    (this.player.position.x - lake.x) ** 2 +
+                    (this.player.position.z - lake.z) ** 2
+                );
+                if (dist < lake.radius * 1.5) {
+                    const waterVolume = Math.max(0, 1 - dist / (lake.radius * 1.5)) * 0.2;
+                    this.audioSources.water.gain.gain.setTargetAtTime(
+                        waterVolume,
+                        this.audioContext.currentTime,
+                        0.5
+                    );
+                    nearWater = true;
+                    break;
+                }
+            }
+            if (!nearWater) {
+                this.audioSources.water.gain.gain.setTargetAtTime(0, this.audioContext.currentTime, 0.5);
+            }
+        }
+    }
+
     handleVoiceInput(text) {
         if (this.nearbyNPC && !this.isProcessingDialogue) {
             this.processDialogue(this.nearbyNPC.userData.npcName, text);
@@ -964,17 +1257,32 @@ class PoroGame {
     }
 
     setupEventListeners() {
+        // ═══════════════════════════════════════════════════════════
+        // BUTTER-SMOOTH INPUT SYSTEM
+        // Zero-latency keyboard + mouse synchronization
+        // ═══════════════════════════════════════════════════════════
+
+        // Smooth camera velocity for interpolation
+        this.cameraVelocityX = 0;
+        this.cameraVelocityY = 0;
+        this.targetCameraAngleX = this.cameraAngleX;
+        this.targetCameraAngleY = this.cameraAngleY;
+
+        // Keyboard input - instant response
         window.addEventListener('keydown', (e) => {
             this.keys[e.code] = true;
 
-            if (e.code === 'KeyE' && this.nearbyNPC && !this.inDialogue) {
-                this.startDialogue();
+            // Camera mode toggle with C
+            if (e.code === 'KeyC' && !this.inDialogue) {
+                this.toggleCameraMode();
             }
 
-            if (e.code === 'Escape' && this.inDialogue) {
-                this.endDialogue();
+            // V key - Talk to NPC
+            if (e.code === 'KeyV' && !this.inDialogue && this.nearbyNPC) {
+                this.talk();
             }
 
+            // V key in dialogue - voice input
             if (e.code === 'KeyV' && this.inDialogue && this.voiceInput) {
                 if (!this.isListening) {
                     this.voiceInput.start();
@@ -985,13 +1293,38 @@ class PoroGame {
                     this.isListening = false;
                 }
             }
+
+            // Escape - exit dialogue
+            if (e.code === 'Escape' && this.inDialogue) {
+                this.endDialogue();
+            }
         });
 
         window.addEventListener('keyup', (e) => this.keys[e.code] = false);
 
-        document.addEventListener('click', () => {
-            if (!this.mouseLocked && !this.inDialogue) {
+        // ═══════════════════════════════════════════════════════════
+        // MOUSE CONTROLS - Smooth orbit camera
+        // ═══════════════════════════════════════════════════════════
+
+        // Left click - lock pointer for camera control
+        document.addEventListener('click', (e) => {
+            if (e.button === 0 && !this.mouseLocked && !this.inDialogue) {
                 this.renderer.domElement.requestPointerLock();
+            }
+        });
+
+        // Right click - EAT action
+        document.addEventListener('contextmenu', (e) => {
+            e.preventDefault();
+            if (!this.inDialogue) {
+                this.eat();
+            }
+        });
+
+        // Mouse down for right click detection
+        document.addEventListener('mousedown', (e) => {
+            if (e.button === 2 && !this.inDialogue) {
+                this.eat();
             }
         });
 
@@ -999,25 +1332,44 @@ class PoroGame {
             this.mouseLocked = document.pointerLockElement === this.renderer.domElement;
         });
 
+        // ═══════════════════════════════════════════════════════════
+        // MOUSE CAMERA CONTROL - Direct and responsive
+        // ═══════════════════════════════════════════════════════════
         document.addEventListener('mousemove', (e) => {
             if (this.mouseLocked && !this.inDialogue) {
-                this.player.rotation.y -= e.movementX * 0.002;
-                this.player.rotation.x -= e.movementY * 0.002;
-                this.player.rotation.x = Math.max(-Math.PI / 3, Math.min(Math.PI / 3, this.player.rotation.x));
+                const sensitivity = 0.004;
+
+                // Horizontal: move mouse right = camera rotates right (sees more of left side)
+                this.cameraAngleY += e.movementX * sensitivity;
+
+                // Vertical: move mouse up = camera looks up
+                this.cameraAngleX -= e.movementY * sensitivity;
+
+                // Clamp vertical (0.2 = almost level, 1.4 = looking down from above)
+                this.cameraAngleX = Math.max(0.2, Math.min(1.4, this.cameraAngleX));
+
+                // Sync targets for smooth system
+                this.targetCameraAngleY = this.cameraAngleY;
+                this.targetCameraAngleX = this.cameraAngleX;
             }
         });
 
+        // Scroll wheel - smooth zoom
         window.addEventListener('wheel', (e) => {
-            this.cameraDistance += e.deltaY * 0.01;
-            this.cameraDistance = Math.max(5, Math.min(40, this.cameraDistance));
+            if (this.cameraMode !== 'firstPerson') {
+                this.targetCameraDistance += e.deltaY * 0.015;
+                this.targetCameraDistance = Math.max(4, Math.min(40, this.targetCameraDistance));
+            }
         });
 
+        // Window resize
         window.addEventListener('resize', () => {
             this.camera.aspect = window.innerWidth / window.innerHeight;
             this.camera.updateProjectionMatrix();
             this.renderer.setSize(window.innerWidth, window.innerHeight);
         });
 
+        // Dialogue input
         const dialogueInput = document.getElementById('dialogue-input');
         if (dialogueInput) {
             dialogueInput.addEventListener('keydown', (e) => {
@@ -1029,6 +1381,64 @@ class PoroGame {
                     }
                 }
             });
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════
+    // ACTION HANDLERS
+    // ═══════════════════════════════════════════════════════════
+
+    eat() {
+        const nearbyLichen = this.chunkManager.getNearbyLichen(
+            this.player.position.x, this.player.position.z, 4
+        );
+
+        if (nearbyLichen.length > 0) {
+            const lichen = nearbyLichen[0];
+            lichen.userData.collected = true;
+            lichen.visible = false;
+            this.lichenCollected++;
+            this.stats.hunger = Math.min(100, this.stats.hunger + 15);
+            this.stats.energy = Math.min(100, this.stats.energy + 5);
+            this.showMessage('Yum! Ate lichen (+15 Hunger, +5 Energy)');
+            console.log('PORO is eating... Lichen collected:', this.lichenCollected);
+        } else {
+            this.showMessage('No lichen nearby to eat');
+        }
+    }
+
+    talk() {
+        if (this.nearbyNPC && !this.inDialogue) {
+            console.log('PORO wants to talk to:', this.nearbyNPC.userData.npcName);
+            this.startDialogue();
+        } else if (!this.nearbyNPC) {
+            this.showMessage('No one nearby to talk to');
+        }
+    }
+
+    toggleCameraMode() {
+        const modes = ['orbit', 'cinematic', 'firstPerson'];
+        const currentIndex = modes.indexOf(this.cameraMode);
+        this.cameraMode = modes[(currentIndex + 1) % modes.length];
+
+        // Adjust settings per mode
+        switch (this.cameraMode) {
+            case 'orbit':
+                this.targetCameraDistance = 12;
+                this.cameraHeight = 6;
+                this.reindeer.visible = true;
+                this.showMessage('Camera: Orbit Mode (scroll to zoom)');
+                break;
+            case 'cinematic':
+                this.targetCameraDistance = 20;
+                this.cameraHeight = 10;
+                this.reindeer.visible = true;
+                this.showMessage('Camera: Cinematic Mode');
+                break;
+            case 'firstPerson':
+                this.reindeer.visible = false;
+                this.showMessage('Camera: First Person (through Poro eyes)');
+                break;
         }
     }
 
@@ -1066,12 +1476,13 @@ class PoroGame {
         const delta = Math.min(this.clock.getDelta(), 0.1);
 
         this.updatePlayerMovement(delta);
-        this.updateCamera();
+        this.updateCamera(delta);
         this.updateStats(delta);
         this.updateDayNight(delta);
         this.updateWeather(delta);
         this.updateNPCs(delta);
         this.updateBirds(delta);
+        this.updateAudio();
         this.updateUI();
         this.updateMinimap();
         this.checkObjectives();
@@ -1084,32 +1495,71 @@ class PoroGame {
     updatePlayerMovement(delta) {
         if (this.inDialogue) return;
 
-        const moveSpeed = this.keys['ShiftLeft'] || this.keys['ShiftRight']
-            ? CONFIG.player.sprintSpeed : CONFIG.player.walkSpeed;
+        const isSprinting = this.keys['ShiftLeft'] || this.keys['ShiftRight'];
+        const moveSpeed = isSprinting ? CONFIG.player.sprintSpeed : CONFIG.player.walkSpeed;
 
-        let moveX = 0, moveZ = 0;
+        // Input: wat de speler wil
+        let forward = 0;  // + = vooruit (weg van camera), - = achteruit
+        let right = 0;    // + = rechts, - = links
 
-        if (this.keys['KeyW'] || this.keys['ArrowUp']) moveZ -= 1;
-        if (this.keys['KeyS'] || this.keys['ArrowDown']) moveZ += 1;
-        if (this.keys['KeyA'] || this.keys['ArrowLeft']) moveX -= 1;
-        if (this.keys['KeyD'] || this.keys['ArrowRight']) moveX += 1;
+        // Pijltjes en WASD
+        if (this.keys['ArrowUp'] || this.keys['KeyW']) forward = 1;     // Vooruit
+        if (this.keys['ArrowDown'] || this.keys['KeyS']) forward = -1;  // Achteruit
+        if (this.keys['ArrowRight'] || this.keys['KeyD']) right = 1;    // Rechts
+        if (this.keys['ArrowLeft'] || this.keys['KeyA']) right = -1;    // Links
 
-        if (moveX !== 0 || moveZ !== 0) {
-            const angle = this.player.rotation.y;
-            const sin = Math.sin(angle);
-            const cos = Math.cos(angle);
+        const isMoving = forward !== 0 || right !== 0;
 
-            const dx = (moveX * cos - moveZ * sin) * moveSpeed * delta;
-            const dz = (moveX * sin + moveZ * cos) * moveSpeed * delta;
+        if (isMoving) {
+            // Normalize diagonaal
+            const len = Math.sqrt(forward * forward + right * right);
+            forward /= len;
+            right /= len;
+
+            // Camera kijkt naar speler vanuit cameraAngleY
+            // Forward richting = TEGENGESTELD aan camera positie
+            // Camera staat op: sin(camY), cos(camY) relatief aan speler
+            // Dus forward = -sin(camY), -cos(camY)
+            const camY = this.cameraAngleY;
+
+            // Forward vector (weg van camera)
+            const forwardX = -Math.sin(camY);
+            const forwardZ = -Math.cos(camY);
+
+            // Right vector (90 graden rechts van forward)
+            const rightX = Math.cos(camY);
+            const rightZ = -Math.sin(camY);
+
+            // Bereken beweging
+            const dx = (forward * forwardX + right * rightX) * moveSpeed * delta;
+            const dz = (forward * forwardZ + right * rightZ) * moveSpeed * delta;
 
             this.player.position.x += dx;
             this.player.position.z += dz;
 
-            if (this.keys['ShiftLeft'] || this.keys['ShiftRight']) {
-                this.stats.energy = Math.max(0, this.stats.energy - 5 * delta);
+            this.player.velocity.x = dx / delta;
+            this.player.velocity.z = dz / delta;
+
+            if (isSprinting) {
+                this.stats.energy = Math.max(0, this.stats.energy - 4 * delta);
             }
+        } else {
+            this.player.velocity.x *= 0.9;
+            this.player.velocity.z *= 0.9;
         }
 
+        // PORO kijkt ALTIJD naar voren (weg van camera)
+        if (this.cameraMode !== 'firstPerson') {
+            const targetRot = this.cameraAngleY - Math.PI / 2; // 180 graden gedraaid
+            let diff = targetRot - this.player.rotation.y;
+            while (diff > Math.PI) diff -= Math.PI * 2;
+            while (diff < -Math.PI) diff += Math.PI * 2;
+            this.player.rotation.y += diff * 0.1;
+        }
+
+        this.animateLegs(delta, isMoving, moveSpeed);
+
+        // Gravity
         const terrainHeight = this.chunkManager.getHeightAt(
             this.player.position.x, this.player.position.z
         );
@@ -1126,43 +1576,64 @@ class PoroGame {
 
         this.player.position.y += this.player.velocity.y * delta;
 
+        // Jump
         if (this.keys['Space'] && this.player.onGround) {
             this.player.velocity.y = CONFIG.player.jumpForce;
             this.player.onGround = false;
         }
 
+        // World bounds
         const halfWorld = this.worldSize / 2;
         this.player.position.x = Math.max(-halfWorld, Math.min(halfWorld, this.player.position.x));
         this.player.position.z = Math.max(-halfWorld, Math.min(halfWorld, this.player.position.z));
 
+        // Update reindeer
         this.reindeer.position.copy(this.player.position);
         this.reindeer.rotation.y = this.player.rotation.y + Math.PI;
-
-        if (this.keys['KeyE'] && !this.inDialogue) {
-            const nearbyLichen = this.chunkManager.getNearbyLichen(
-                this.player.position.x, this.player.position.z, 3
-            );
-            if (nearbyLichen.length > 0 && !this.keys['_eLock']) {
-                this.keys['_eLock'] = true;
-                const lichen = nearbyLichen[0];
-                lichen.userData.collected = true;
-                lichen.visible = false;
-                this.lichenCollected++;
-                this.stats.hunger = Math.min(100, this.stats.hunger + 15);
-                this.stats.energy = Math.min(100, this.stats.energy + 5);
-                this.showMessage('Ate lichen! +15 Hunger');
-                setTimeout(() => this.keys['_eLock'] = false, 500);
-            }
-        }
     }
 
-    updateCamera() {
-        const targetX = this.player.position.x - Math.sin(this.player.rotation.y) * this.cameraDistance;
-        const targetZ = this.player.position.z - Math.cos(this.player.rotation.y) * this.cameraDistance;
-        const targetY = this.player.position.y + this.cameraHeight + Math.sin(this.player.rotation.x) * this.cameraDistance * 0.3;
+    updateCamera(delta) {
+        // Smooth zoom
+        this.cameraDistance += (this.targetCameraDistance - this.cameraDistance) * 0.1;
 
-        this.camera.position.lerp(new THREE.Vector3(targetX, targetY, targetZ), 0.1);
-        this.camera.lookAt(this.player.position.x, this.player.position.y + 1, this.player.position.z);
+        if (this.cameraMode === 'firstPerson') {
+            // First person view
+            const eyeWorldPos = new THREE.Vector3();
+            eyeWorldPos.copy(this.eyePosition);
+            eyeWorldPos.applyAxisAngle(new THREE.Vector3(0, 1, 0), this.player.rotation.y + Math.PI);
+            eyeWorldPos.add(this.player.position);
+            this.camera.position.lerp(eyeWorldPos, 0.2);
+
+            const lookDir = new THREE.Vector3(
+                Math.sin(this.player.rotation.y),
+                0,
+                Math.cos(this.player.rotation.y)
+            );
+            const lookTarget = this.camera.position.clone().add(lookDir.multiplyScalar(10));
+            this.camera.lookAt(lookTarget);
+        } else {
+            // Orbit camera - simple and direct
+            const dist = this.cameraDistance;
+            const height = this.cameraHeight + dist * Math.sin(this.cameraAngleX);
+
+            // Camera position orbits around player
+            const camX = this.player.position.x + Math.sin(this.cameraAngleY) * dist * Math.cos(this.cameraAngleX);
+            const camZ = this.player.position.z + Math.cos(this.cameraAngleY) * dist * Math.cos(this.cameraAngleX);
+            const camY = this.player.position.y + height;
+
+            // Smooth follow
+            const smoothness = this.cameraMode === 'cinematic' ? 0.05 : 0.12;
+            this.camera.position.x += (camX - this.camera.position.x) * smoothness;
+            this.camera.position.y += (camY - this.camera.position.y) * smoothness;
+            this.camera.position.z += (camZ - this.camera.position.z) * smoothness;
+
+            // Always look at player
+            this.camera.lookAt(
+                this.player.position.x,
+                this.player.position.y + 1,
+                this.player.position.z
+            );
+        }
     }
 
     updateStats(delta) {
