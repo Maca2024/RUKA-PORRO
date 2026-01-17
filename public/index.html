@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🦌 PORO - Taiga Adventure</title>
+    <title>🦌 RUKA PORRO VOXL - AI Edition</title>
     <style>
         * {
             margin: 0;
@@ -186,6 +186,105 @@
         #message.show {
             opacity: 1;
         }
+
+        /* Dialogue UI */
+        #dialogue-ui {
+            position: absolute;
+            bottom: 180px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 600px;
+            max-width: 90%;
+            display: none;
+            z-index: 200;
+        }
+        #dialogue-ui.show {
+            display: block;
+        }
+        #dialogue-box {
+            background: rgba(0,0,0,0.85);
+            border-radius: 15px;
+            padding: 20px;
+            color: white;
+            border: 2px solid rgba(255,255,255,0.2);
+            backdrop-filter: blur(10px);
+            display: none;
+        }
+        #dialogue-box.show {
+            display: block;
+        }
+        #dialogue-npc-name {
+            color: #f39c12;
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        #dialogue-npc-response {
+            font-size: 16px;
+            line-height: 1.5;
+            margin-bottom: 15px;
+        }
+        #dialogue-input-container {
+            display: flex;
+            gap: 10px;
+        }
+        #dialogue-input {
+            flex: 1;
+            padding: 12px 15px;
+            border-radius: 8px;
+            border: none;
+            background: rgba(255,255,255,0.1);
+            color: white;
+            font-size: 14px;
+            outline: none;
+        }
+        #dialogue-input::placeholder {
+            color: rgba(255,255,255,0.5);
+        }
+        #dialogue-input:focus {
+            background: rgba(255,255,255,0.15);
+        }
+        .voice-btn {
+            padding: 12px 20px;
+            border-radius: 8px;
+            border: none;
+            background: #3498db;
+            color: white;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background 0.2s;
+        }
+        .voice-btn:hover {
+            background: #2980b9;
+        }
+        .voice-btn.listening {
+            background: #e74c3c;
+            animation: pulse 1s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+        #dialogue-hint {
+            text-align: center;
+            font-size: 12px;
+            color: rgba(255,255,255,0.5);
+            margin-top: 10px;
+        }
+
+        /* World size indicator */
+        #world-info {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: white;
+            font-size: 12px;
+            background: rgba(0,0,0,0.4);
+            padding: 5px 15px;
+            border-radius: 15px;
+            pointer-events: none;
+        }
     </style>
 </head>
 <body>
@@ -246,16 +345,33 @@
             <p>WASD / Arrows - Move</p>
             <p>SPACE - Jump</p>
             <p>SHIFT - Sprint</p>
-            <p>E - Eat lichen</p>
-            <p>Click - Lock cursor</p>
+            <p>E - Interact / Eat</p>
+            <p>V - Voice chat (in dialogue)</p>
+            <p>ESC - Exit dialogue</p>
         </div>
 
         <canvas id="minimap"></canvas>
 
         <div id="message"></div>
+
+        <div id="world-info">RUKA PORRO VOXL - 4000x4000 World</div>
+
+        <!-- Dialogue UI -->
+        <div id="dialogue-ui">
+            <div id="dialogue-box">
+                <div id="dialogue-npc-name">NPC</div>
+                <div id="dialogue-npc-response">...</div>
+            </div>
+            <div id="dialogue-input-container">
+                <input type="text" id="dialogue-input" placeholder="Type your message or press V to speak..." />
+                <button class="voice-btn" id="voice-btn">V Speak</button>
+            </div>
+            <div id="dialogue-hint">Press ENTER to send | Press V for voice | Press ESC to close</div>
+        </div>
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="ai-engine.js"></script>
     <script src="game.js"></script>
 </body>
 </html>

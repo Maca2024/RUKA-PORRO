@@ -1,16 +1,33 @@
 {
-  "name": "poro-taiga-adventure",
-  "version": "1.0.0",
-  "description": "🦌 PORO - A voxel adventure game set in Lapland Taiga",
+  "name": "ruka-porro-voxl",
+  "version": "2.0.0",
+  "description": "🦌 RUKA PORRO VOXL - AI Edition: Generative AI Narrative Adventure in Lapland",
   "main": "src/server.js",
   "scripts": {
     "start": "node src/server.js",
     "dev": "node src/server.js"
   },
-  "keywords": ["game", "voxel", "poro", "reindeer", "lapland", "finland"],
+  "keywords": [
+    "game",
+    "voxel",
+    "poro",
+    "reindeer",
+    "lapland",
+    "finland",
+    "ai",
+    "narrative",
+    "threejs",
+    "anthropic",
+    "elevenlabs"
+  ],
   "author": "RUKA-PORRO Team",
   "license": "MIT",
   "dependencies": {
-    "express": "^4.18.2"
+    "express": "^4.18.2",
+    "cors": "^2.8.5",
+    "express-rate-limit": "^7.1.5"
+  },
+  "engines": {
+    "node": ">=18.0.0"
   }
 }
