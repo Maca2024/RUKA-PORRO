@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🦌 PORO - Taiga Adventure</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            overflow: hidden;
+            background: #1a1a2e;
+            font-family: 'Segoe UI', Arial, sans-serif;
+        }
+        #game-container {
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+        }
+        canvas {
+            display: block;
+        }
+        #ui {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: white;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+            pointer-events: none;
+            z-index: 100;
+        }
+        #stats {
+            background: rgba(0,0,0,0.6);
+            padding: 15px 20px;
+            border-radius: 10px;
+            backdrop-filter: blur(5px);
+        }
+        .stat-bar {
+            margin: 8px 0;
+        }
+        .stat-bar label {
+            display: block;
+            font-size: 12px;
+            margin-bottom: 4px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .bar-container {
+            width: 200px;
+            height: 12px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 6px;
+            overflow: hidden;
+        }
+        .bar {
+            height: 100%;
+            transition: width 0.3s ease;
+            border-radius: 6px;
+        }
+        #health-bar { background: linear-gradient(90deg, #e74c3c, #c0392b); }
+        #energy-bar { background: linear-gradient(90deg, #f39c12, #e67e22); }
+        #warmth-bar { background: linear-gradient(90deg, #3498db, #2980b9); }
+        #hunger-bar { background: linear-gradient(90deg, #2ecc71, #27ae60); }
+
+        #score {
+            font-size: 24px;
+            margin-top: 15px;
+        }
+        #objectives {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            color: white;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+            background: rgba(0,0,0,0.6);
+            padding: 15px 20px;
+            border-radius: 10px;
+            backdrop-filter: blur(5px);
+            max-width: 300px;
+        }
+        #objectives h3 {
+            margin-bottom: 10px;
+            color: #f39c12;
+        }
+        #objective-list {
+            list-style: none;
+            font-size: 14px;
+        }
+        #objective-list li {
+            margin: 5px 0;
+            padding-left: 20px;
+            position: relative;
+        }
+        #objective-list li::before {
+            content: '◇';
+            position: absolute;
+            left: 0;
+            color: #3498db;
+        }
+        #objective-list li.completed::before {
+            content: '◆';
+            color: #2ecc71;
+        }
+        #controls {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            color: white;
+            background: rgba(0,0,0,0.6);
+            padding: 15px 20px;
+            border-radius: 10px;
+            font-size: 12px;
+        }
+        #controls h4 {
+            margin-bottom: 8px;
+            color: #f39c12;
+        }
+        #minimap {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            width: 150px;
+            height: 150px;
+            background: rgba(0,0,0,0.6);
+            border-radius: 10px;
+            border: 2px solid rgba(255,255,255,0.3);
+        }
+        #loading {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            z-index: 1000;
+            transition: opacity 0.5s ease;
+        }
+        #loading h1 {
+            font-size: 48px;
+            margin-bottom: 20px;
+        }
+        #loading p {
+            font-size: 18px;
+            color: #888;
+        }
+        .loading-bar {
+            width: 300px;
+            height: 6px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 3px;
+            margin-top: 30px;
+            overflow: hidden;
+        }
+        .loading-progress {
+            width: 0%;
+            height: 100%;
+            background: linear-gradient(90deg, #3498db, #2ecc71);
+            border-radius: 3px;
+            animation: loading 2s ease-in-out forwards;
+        }
+        @keyframes loading {
+            0% { width: 0%; }
+            100% { width: 100%; }
+        }
+        #message {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-size: 24px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            text-align: center;
+        }
+        #message.show {
+            opacity: 1;
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <div id="loading">
+            <h1>🦌 PORO</h1>
+            <p>Taiga Adventure</p>
+            <div class="loading-bar">
+                <div class="loading-progress"></div>
+            </div>
+            <p style="margin-top: 20px; font-size: 14px;">Preparing the Lapland wilderness...</p>
+        </div>
+
+        <div id="ui">
+            <div id="stats">
+                <div class="stat-bar">
+                    <label>❤️ Health</label>
+                    <div class="bar-container">
+                        <div id="health-bar" class="bar" style="width: 100%"></div>
+                    </div>
+                </div>
+                <div class="stat-bar">
+                    <label>⚡ Energy</label>
+                    <div class="bar-container">
+                        <div id="energy-bar" class="bar" style="width: 100%"></div>
+                    </div>
+                </div>
+                <div class="stat-bar">
+                    <label>🔥 Warmth</label>
+                    <div class="bar-container">
+                        <div id="warmth-bar" class="bar" style="width: 100%"></div>
+                    </div>
+                </div>
+                <div class="stat-bar">
+                    <label>🍃 Hunger</label>
+                    <div class="bar-container">
+                        <div id="hunger-bar" class="bar" style="width: 100%"></div>
+                    </div>
+                </div>
+                <div id="score">🌟 Lichen: <span id="lichen-count">0</span></div>
+            </div>
+        </div>
+
+        <div id="objectives">
+            <h3>🎯 Objectives</h3>
+            <ul id="objective-list">
+                <li id="obj-explore">Explore the taiga forest</li>
+                <li id="obj-lichen">Collect 10 lichen patches</li>
+                <li id="obj-survive">Survive the cold night</li>
+                <li id="obj-aurora">Witness the Aurora Borealis</li>
+            </ul>
+        </div>
+
+        <div id="controls">
+            <h4>Controls</h4>
+            <p>Mouse - Look around</p>
+            <p>Scroll - Zoom in/out</p>
+            <p>WASD / Arrows - Move</p>
+            <p>SPACE - Jump</p>
+            <p>SHIFT - Sprint</p>
+            <p>E - Eat lichen</p>
+            <p>Click - Lock cursor</p>
+        </div>
+
+        <canvas id="minimap"></canvas>
+
+        <div id="message"></div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="game.js"></script>
+</body>
+</html>

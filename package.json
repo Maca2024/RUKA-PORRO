@@ -1,0 +1,16 @@
+{
+  "name": "poro-taiga-adventure",
+  "version": "1.0.0",
+  "description": "🦌 PORO - A voxel adventure game set in Lapland Taiga",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node src/server.js"
+  },
+  "keywords": ["game", "voxel", "poro", "reindeer", "lapland", "finland"],
+  "author": "RUKA-PORRO Team",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.18.2"
+  }
+}

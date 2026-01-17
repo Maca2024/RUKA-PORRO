@@ -1,0 +1,40 @@
+# 🦌 PORO - Game Concept
+
+## Project Overview
+
+**PORO: Taiga Adventure** is a voxel game set in the Taiga forests of Ruka-Kuusama, Lapland, Finland.
+
+## Core Concept
+
+Play as **PORO**, a reindeer exploring vast pine forests.
+
+## 🎮 Gameplay Features
+
+- Open World Exploration
+- Survival Mechanics (hunger, temperature, energy)
+- Wildlife (wolves, moose, animals)
+- Dynamic Weather (snow, fog, Aurora)
+- Environmental Puzzles
+- Sámi Cultural Storytelling
+
+## 🌍 Setting
+
+Ruka-Kuusama Taiga in Finnish Lapland with endless pine forests, snow-covered landscapes, frozen lakes, and Aurora Borealis.
+
+## 🎨 Visual Style
+
+- Inspiration: Minecraft, Veloren, Kenshi
+- Colors: Deep greens, snow whites, misty grays
+- Flora: Pine trees, moss, lichen, snow drifts
+
+## 🏆 Unique Points
+
+1. Cultural authenticity (Sámi heritage)
+2. Atmospheric design
+3. Immersive survival
+4. Nordic beauty
+5. Indie excellence
+
+---
+
+**PORO: Where Ancient Legends Meet Modern Gaming** 🌲✨
