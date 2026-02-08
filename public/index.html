@@ -1,15 +1,11 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="nl">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🦌 RUKA PORRO VOXL - AI Edition</title>
+    <title>AI Academy - Leer AI door te spelen</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
             overflow: hidden;
             background: #1a1a2e;
@@ -20,121 +16,16 @@
             height: 100vh;
             position: relative;
         }
-        canvas {
-            display: block;
-        }
-        #ui {
-            position: absolute;
-            top: 20px;
-            left: 20px;
-            color: white;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
-            pointer-events: none;
-            z-index: 100;
-        }
-        #stats {
-            background: rgba(0,0,0,0.6);
-            padding: 15px 20px;
-            border-radius: 10px;
-            backdrop-filter: blur(5px);
-        }
-        .stat-bar {
-            margin: 8px 0;
-        }
-        .stat-bar label {
-            display: block;
-            font-size: 12px;
-            margin-bottom: 4px;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-        .bar-container {
-            width: 200px;
-            height: 12px;
-            background: rgba(255,255,255,0.2);
-            border-radius: 6px;
-            overflow: hidden;
-        }
-        .bar {
-            height: 100%;
-            transition: width 0.3s ease;
-            border-radius: 6px;
-        }
-        #health-bar { background: linear-gradient(90deg, #e74c3c, #c0392b); }
-        #energy-bar { background: linear-gradient(90deg, #f39c12, #e67e22); }
-        #warmth-bar { background: linear-gradient(90deg, #3498db, #2980b9); }
-        #hunger-bar { background: linear-gradient(90deg, #2ecc71, #27ae60); }
+        canvas { display: block; }
 
-        #score {
-            font-size: 24px;
-            margin-top: 15px;
-        }
-        #objectives {
-            position: absolute;
-            top: 20px;
-            right: 20px;
-            color: white;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
-            background: rgba(0,0,0,0.6);
-            padding: 15px 20px;
-            border-radius: 10px;
-            backdrop-filter: blur(5px);
-            max-width: 300px;
-        }
-        #objectives h3 {
-            margin-bottom: 10px;
-            color: #f39c12;
-        }
-        #objective-list {
-            list-style: none;
-            font-size: 14px;
-        }
-        #objective-list li {
-            margin: 5px 0;
-            padding-left: 20px;
-            position: relative;
-        }
-        #objective-list li::before {
-            content: '◇';
-            position: absolute;
-            left: 0;
-            color: #3498db;
-        }
-        #objective-list li.completed::before {
-            content: '◆';
-            color: #2ecc71;
-        }
-        #controls {
-            position: absolute;
-            bottom: 20px;
-            left: 20px;
-            color: white;
-            background: rgba(0,0,0,0.6);
-            padding: 15px 20px;
-            border-radius: 10px;
-            font-size: 12px;
-        }
-        #controls h4 {
-            margin-bottom: 8px;
-            color: #f39c12;
-        }
-        #minimap {
-            position: absolute;
-            bottom: 20px;
-            right: 20px;
-            width: 150px;
-            height: 150px;
-            background: rgba(0,0,0,0.6);
-            border-radius: 10px;
-            border: 2px solid rgba(255,255,255,0.3);
-        }
+        /* ═══════════════════════════════════════════
+           LOADING SCREEN
+           ═══════════════════════════════════════════ */
         #loading {
             position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: linear-gradient(135deg, #0a1628 0%, #1a2a4e 100%);
             display: flex;
             flex-direction: column;
             justify-content: center;
@@ -145,49 +36,36 @@
         }
         #loading h1 {
             font-size: 48px;
-            margin-bottom: 20px;
+            margin-bottom: 10px;
+            background: linear-gradient(135deg, #0066FF, #00C9A7);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            animation: loadingGlow 2s ease-in-out infinite alternate;
         }
-        #loading p {
-            font-size: 18px;
-            color: #888;
+        @keyframes loadingGlow {
+            from { filter: brightness(1); }
+            to { filter: brightness(1.3); }
         }
+        #loading .subtitle { font-size: 20px; color: #00C9A7; margin-bottom: 30px; }
+        #loading p { font-size: 14px; color: #888; }
         .loading-bar {
-            width: 300px;
-            height: 6px;
+            width: 300px; height: 6px;
             background: rgba(255,255,255,0.2);
             border-radius: 3px;
-            margin-top: 30px;
+            margin-top: 20px;
             overflow: hidden;
         }
         .loading-progress {
-            width: 0%;
-            height: 100%;
-            background: linear-gradient(90deg, #3498db, #2ecc71);
+            width: 0%; height: 100%;
+            background: linear-gradient(90deg, #0066FF, #00C9A7);
             border-radius: 3px;
             animation: loading 2s ease-in-out forwards;
         }
-        @keyframes loading {
-            0% { width: 0%; }
-            100% { width: 100%; }
-        }
-        #message {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            color: white;
-            font-size: 24px;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
-            pointer-events: none;
-            opacity: 0;
-            transition: opacity 0.3s ease;
-            text-align: center;
-        }
-        #message.show {
-            opacity: 1;
-        }
+        @keyframes loading { 0% { width: 0%; } 100% { width: 100%; } }
 
-        /* Dialogue UI */
+        /* ═══════════════════════════════════════════
+           DIALOGUE UI
+           ═══════════════════════════════════════════ */
         #dialogue-ui {
             position: absolute;
             bottom: 180px;
@@ -198,193 +76,831 @@
             display: none;
             z-index: 200;
         }
-        #dialogue-ui.show {
-            display: block;
-        }
+        #dialogue-ui.show { display: block; }
         #dialogue-box {
-            background: rgba(0,0,0,0.85);
-            border-radius: 15px;
-            padding: 20px;
+            background: rgba(10,22,40,0.9);
+            border-radius: 12px;
+            padding: 18px;
             color: white;
-            border: 2px solid rgba(255,255,255,0.2);
+            border: 1px solid rgba(0,102,255,0.3);
             backdrop-filter: blur(10px);
             display: none;
-        }
-        #dialogue-box.show {
-            display: block;
-        }
-        #dialogue-npc-name {
-            color: #f39c12;
-            font-size: 18px;
-            font-weight: bold;
             margin-bottom: 10px;
         }
-        #dialogue-npc-response {
+        #dialogue-box.show { display: block; }
+        #dialogue-npc-name {
+            color: #00C9A7;
             font-size: 16px;
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+        #dialogue-npc-response {
+            font-size: 15px;
             line-height: 1.5;
-            margin-bottom: 15px;
+            margin-bottom: 12px;
         }
         #dialogue-input-container {
             display: flex;
-            gap: 10px;
+            gap: 8px;
         }
         #dialogue-input {
             flex: 1;
-            padding: 12px 15px;
+            padding: 10px 14px;
             border-radius: 8px;
-            border: none;
-            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(0,102,255,0.3);
+            background: rgba(255,255,255,0.08);
             color: white;
             font-size: 14px;
             outline: none;
         }
-        #dialogue-input::placeholder {
-            color: rgba(255,255,255,0.5);
-        }
-        #dialogue-input:focus {
-            background: rgba(255,255,255,0.15);
-        }
+        #dialogue-input::placeholder { color: rgba(255,255,255,0.4); }
+        #dialogue-input:focus { border-color: #0066FF; background: rgba(255,255,255,0.12); }
         .voice-btn {
-            padding: 12px 20px;
+            padding: 10px 18px;
             border-radius: 8px;
             border: none;
-            background: #3498db;
+            background: #0066FF;
             color: white;
             cursor: pointer;
             font-size: 14px;
             transition: background 0.2s;
         }
-        .voice-btn:hover {
-            background: #2980b9;
-        }
+        .voice-btn:hover { background: #0055DD; }
         .voice-btn.listening {
             background: #e74c3c;
             animation: pulse 1s infinite;
         }
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.7; }
-        }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
         #dialogue-hint {
             text-align: center;
-            font-size: 12px;
-            color: rgba(255,255,255,0.5);
-            margin-top: 10px;
+            font-size: 11px;
+            color: rgba(255,255,255,0.4);
+            margin-top: 8px;
         }
 
-        /* World size indicator */
-        #world-info {
+        /* Challenge buttons in dialogue */
+        .challenge-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            margin-top: 10px;
+            pointer-events: all;
+        }
+        .challenge-start-btn {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 14px;
+            background: rgba(0,102,255,0.15);
+            border: 1px solid rgba(0,102,255,0.3);
+            border-radius: 8px;
+            color: white;
+            cursor: pointer;
+            text-align: left;
+            font-size: 13px;
+            transition: all 0.2s;
+        }
+        .challenge-start-btn:hover {
+            background: rgba(0,102,255,0.3);
+            border-color: #0066FF;
+        }
+        .challenge-start-btn.completed {
+            border-color: #00C9A7;
+        }
+        .challenge-btn-icon { font-size: 16px; min-width: 24px; }
+        .challenge-btn-title { flex: 1; font-weight: 500; }
+        .challenge-btn-type { color: #aaa; font-size: 11px; }
+
+        /* ═══════════════════════════════════════════
+           CHALLENGE UI OVERLAY
+           ═══════════════════════════════════════════ */
+        .challenge-overlay {
             position: absolute;
-            top: 20px;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(0,0,0,0.7);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 300;
+            backdrop-filter: blur(5px);
+        }
+        .challenge-panel {
+            background: linear-gradient(135deg, #0a1628, #1a2a4e);
+            border: 1px solid rgba(0,102,255,0.3);
+            border-radius: 16px;
+            padding: 30px;
+            max-width: 650px;
+            width: 90%;
+            max-height: 85vh;
+            overflow-y: auto;
+            color: white;
+        }
+        .challenge-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+        .challenge-header h2 { flex: 1; font-size: 20px; }
+        .challenge-type-badge {
+            background: rgba(0,102,255,0.2);
+            color: #66aaff;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+        }
+        .challenge-close {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 24px;
+            cursor: pointer;
+            opacity: 0.6;
+        }
+        .challenge-close:hover { opacity: 1; }
+        .challenge-description {
+            color: #bbb;
+            font-size: 14px;
+            margin-bottom: 20px;
+            line-height: 1.5;
+        }
+        .challenge-textarea {
+            width: 100%;
+            padding: 14px;
+            border-radius: 10px;
+            border: 1px solid rgba(0,102,255,0.3);
+            background: rgba(255,255,255,0.06);
+            color: #e8e8e8;
+            font-size: 14px;
+            font-family: inherit;
+            resize: vertical;
+            outline: none;
+        }
+        .challenge-textarea::placeholder { color: rgba(255,255,255,0.35); }
+        .challenge-textarea:focus { border-color: #0066FF; }
+        .prompt-task p { margin-bottom: 12px; line-height: 1.5; color: #e0e0e0; }
+        .challenge-content { color: #e0e0e0; }
+        .weak-prompt {
+            background: rgba(255,100,0,0.1);
+            border-left: 3px solid #ff6600;
+            padding: 10px 14px;
+            border-radius: 4px;
+            margin-bottom: 14px;
+            font-size: 14px;
+        }
+        .challenge-actions {
+            margin-top: 20px;
+            text-align: right;
+        }
+        .challenge-btn {
+            padding: 10px 24px;
+            border-radius: 8px;
+            border: none;
+            font-size: 14px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+        .challenge-btn.primary {
+            background: linear-gradient(135deg, #0066FF, #00C9A7);
+            color: white;
+        }
+        .challenge-btn.primary:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,102,255,0.3); }
+        .challenge-btn:disabled { opacity: 0.5; cursor: default; transform: none; }
+
+        /* Quiz */
+        .quiz-question { margin-bottom: 20px; color: #e8e8e8; }
+        .quiz-q { font-size: 15px; margin-bottom: 10px; color: #ffffff; }
+        .quiz-options { display: flex; flex-direction: column; gap: 6px; }
+        .quiz-option {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 14px;
+            background: rgba(255,255,255,0.08);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background 0.2s;
+            color: #e0e0e0;
+        }
+        .quiz-option:hover { background: rgba(255,255,255,0.15); border-color: rgba(0,102,255,0.3); }
+        .quiz-option span { color: #e8e8e8; font-size: 14px; }
+        .quiz-option input[type="radio"] { accent-color: #0066FF; min-width: 16px; min-height: 16px; }
+
+        /* Matching */
+        .matching-grid { display: flex; gap: 20px; }
+        .matching-col { flex: 1; }
+        .matching-col h4 { margin-bottom: 10px; color: #00C9A7; }
+        .matching-term {
+            padding: 8px 12px;
+            background: rgba(0,102,255,0.15);
+            border-radius: 6px;
+            margin-bottom: 6px;
+            font-size: 14px;
+            color: #e8e8e8;
+        }
+        .matching-select {
+            width: 100%;
+            padding: 8px;
+            background: #1a2a4e;
+            border: 1px solid rgba(255,255,255,0.2);
+            color: #e8e8e8;
+            border-radius: 6px;
+            margin-bottom: 4px;
+            font-size: 13px;
+        }
+        .matching-select option {
+            background: #1a2a4e;
+            color: #e8e8e8;
+        }
+        .matching-def { display: block; font-size: 13px; color: #bbb; margin-bottom: 10px; }
+
+        /* Evaluation */
+        .eval-prompt { margin-bottom: 16px; padding: 14px; background: rgba(255,255,255,0.08); border-radius: 10px; color: #e8e8e8; }
+        .eval-prompt-text { font-style: italic; margin-bottom: 8px; color: #d0d0d0; }
+        .eval-rating { display: flex; align-items: center; gap: 6px; color: #e8e8e8; }
+        .star-btn {
+            background: none;
+            border: none;
+            color: #FFD700;
+            font-size: 22px;
+            cursor: pointer;
+            transition: transform 0.15s;
+        }
+        .star-btn:hover { transform: scale(1.2); }
+
+        /* Feedback */
+        .challenge-feedback {
+            margin-top: 16px;
+            padding: 16px;
+            background: rgba(0,200,167,0.1);
+            border: 1px solid rgba(0,200,167,0.3);
+            border-radius: 10px;
+        }
+        .feedback-stars { font-size: 28px; color: #FFD700; text-align: center; margin-bottom: 8px; }
+        .feedback-label { text-align: center; font-size: 18px; font-weight: bold; margin-bottom: 8px; color: #ffffff; }
+        .feedback-text { font-size: 14px; color: #d0d0d0; line-height: 1.5; margin-bottom: 8px; }
+        .feedback-xp { text-align: center; color: #00C9A7; font-weight: bold; font-size: 16px; }
+
+        /* ═══════════════════════════════════════════
+           NOTIFICATION TOASTS
+           ═══════════════════════════════════════════ */
+        #notification-container {
+            position: absolute;
+            top: 60px;
+            right: 20px;
+            z-index: 250;
+            pointer-events: none;
+        }
+        .notification {
+            background: rgba(10,22,40,0.9);
+            border: 1px solid rgba(0,102,255,0.3);
+            border-radius: 10px;
+            padding: 12px 18px;
+            margin-bottom: 8px;
+            color: white;
+            backdrop-filter: blur(8px);
+            transform: translateX(100%);
+            opacity: 0;
+            transition: all 0.4s ease;
+            min-width: 200px;
+        }
+        .notification.show { transform: translateX(0); opacity: 1; }
+        .notification.hide { transform: translateX(100%); opacity: 0; }
+        .notification-levelup { border-color: #FFD700; }
+        .notification-badge { border-color: #00C9A7; }
+        .notification-challenge { border-color: #0066FF; }
+        .notification-portal { border-color: #44aaff; }
+        .notification-world { border-color: #00C9A7; }
+        .notification-title { font-weight: bold; font-size: 14px; }
+        .notification-subtitle { font-size: 12px; color: #aaa; margin-top: 2px; }
+
+        /* ═══════════════════════════════════════════
+           WORLD MAP
+           ═══════════════════════════════════════════ */
+        .worldmap-overlay {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(0,0,0,0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 400;
+            backdrop-filter: blur(8px);
+        }
+        .worldmap-panel {
+            background: linear-gradient(135deg, #0a1628, #1a2a4e);
+            border: 1px solid rgba(0,102,255,0.3);
+            border-radius: 16px;
+            padding: 30px;
+            max-width: 800px;
+            width: 95%;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        .worldmap-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            color: white;
+        }
+        .worldmap-header h2 { font-size: 22px; }
+        .worldmap-close {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 24px;
+            cursor: pointer;
+            opacity: 0.6;
+        }
+        .worldmap-close:hover { opacity: 1; }
+        .worldmap-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            gap: 12px;
+        }
+        .worldmap-card {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 12px;
+            padding: 14px;
+            text-align: center;
+            color: white;
+            transition: all 0.2s;
+        }
+        .worldmap-card:hover:not(.locked) { border-color: #0066FF; transform: translateY(-2px); }
+        .worldmap-card.current { border-color: #00C9A7; background: rgba(0,200,167,0.1); }
+        .worldmap-card.completed { border-color: #FFD700; }
+        .worldmap-card.locked { opacity: 0.4; }
+        .worldmap-card-number {
+            font-size: 28px;
+            font-weight: bold;
+            color: #0066FF;
+            margin-bottom: 6px;
+        }
+        .worldmap-card.current .worldmap-card-number { color: #00C9A7; }
+        .worldmap-card.completed .worldmap-card-number { color: #FFD700; }
+        .worldmap-card-name { font-size: 13px; font-weight: 600; margin-bottom: 4px; }
+        .worldmap-card-skill { font-size: 11px; color: #888; margin-bottom: 8px; min-height: 28px; }
+        .worldmap-card-progress {
+            height: 4px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 2px;
+            overflow: hidden;
+            margin-bottom: 6px;
+        }
+        .worldmap-progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #0066FF, #00C9A7);
+            border-radius: 2px;
+            transition: width 0.5s;
+        }
+        .worldmap-card-status { font-size: 11px; color: #aaa; }
+
+        /* ═══════════════════════════════════════════
+           TRANSITION
+           ═══════════════════════════════════════════ */
+        .transition-overlay {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: linear-gradient(135deg, #0a1628, #1a2a4e);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 500;
+            opacity: 0;
+            transition: opacity 0.5s ease;
+        }
+        .transition-overlay.show { opacity: 1; }
+        .transition-overlay.hide { opacity: 0; }
+        .transition-content { text-align: center; color: white; }
+        .transition-number { font-size: 16px; color: #00C9A7; margin-bottom: 8px; }
+        .transition-name { font-size: 42px; font-weight: bold; margin-bottom: 12px; }
+        .transition-skill { font-size: 18px; color: #aaa; margin-bottom: 30px; }
+        .transition-loading-bar {
+            width: 300px;
+            height: 4px;
+            background: rgba(255,255,255,0.15);
+            border-radius: 2px;
+            margin: 0 auto;
+            overflow: hidden;
+        }
+        .transition-progress {
+            height: 100%;
+            background: linear-gradient(90deg, #0066FF, #00C9A7);
+            border-radius: 2px;
+            transition: width 0.1s;
+        }
+
+        /* ===============================================
+           OBJECTIVE PANEL
+           =============================================== */
+        #objective-panel {
+            position: absolute;
+            top: 12px;
             left: 50%;
             transform: translateX(-50%);
+            background: rgba(10, 22, 40, 0.85);
+            border: 1px solid rgba(0, 201, 167, 0.4);
+            border-radius: 12px;
+            padding: 8px 18px 8px 12px;
+            display: none;
+            align-items: center;
+            gap: 10px;
+            z-index: 120;
+            backdrop-filter: blur(8px);
             color: white;
-            font-size: 12px;
-            background: rgba(0,0,0,0.4);
-            padding: 5px 15px;
-            border-radius: 15px;
+            max-width: 400px;
+            animation: objSlideIn 0.5s ease;
+        }
+        @keyframes objSlideIn {
+            from { opacity: 0; transform: translateX(-50%) translateY(-20px); }
+            to { opacity: 1; transform: translateX(-50%) translateY(0); }
+        }
+        .obj-icon {
+            width: 28px;
+            height: 28px;
+            background: linear-gradient(135deg, #0066FF, #00C9A7);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 14px;
+            flex-shrink: 0;
+        }
+        .obj-title { font-weight: 600; font-size: 13px; }
+        .obj-desc { font-size: 11px; color: #aaa; margin-top: 2px; }
+
+        /* ===============================================
+           COMPASS ARROW
+           =============================================== */
+        #compass-arrow {
+            position: absolute;
+            z-index: 115;
             pointer-events: none;
+            display: none;
+            transform: translate(-50%, -50%);
+        }
+        .compass-inner {
+            text-align: center;
+        }
+        .compass-arrow-shape {
+            width: 0;
+            height: 0;
+            border-left: 8px solid transparent;
+            border-right: 8px solid transparent;
+            border-bottom: 20px solid #00C9A7;
+            margin: 0 auto 4px auto;
+            filter: drop-shadow(0 0 4px rgba(0, 201, 167, 0.6));
+            transition: transform 0.1s;
+        }
+        .compass-label {
+            font-size: 10px;
+            color: #00C9A7;
+            white-space: nowrap;
+            text-shadow: 0 0 4px rgba(0, 0, 0, 0.8);
+        }
+        .compass-dist {
+            font-size: 9px;
+            color: #aaa;
+            text-shadow: 0 0 4px rgba(0, 0, 0, 0.8);
+        }
+
+        /* ===============================================
+           WELCOME OVERLAY
+           =============================================== */
+        #welcome-overlay {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 600;
+            backdrop-filter: blur(12px);
+        }
+        .welcome-panel {
+            background: linear-gradient(135deg, #0a1628 0%, #162040 100%);
+            border: 1px solid rgba(0, 102, 255, 0.3);
+            border-radius: 20px;
+            padding: 40px;
+            max-width: 520px;
+            width: 90%;
+            color: white;
+            text-align: center;
+            animation: welcomeFadeIn 0.6s ease;
+        }
+        @keyframes welcomeFadeIn {
+            from { opacity: 0; transform: scale(0.9); }
+            to { opacity: 1; transform: scale(1); }
+        }
+        .welcome-panel h1 {
+            font-size: 28px;
+            margin-bottom: 20px;
+            background: linear-gradient(135deg, #0066FF, #00C9A7);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .welcome-intro {
+            font-size: 14px;
+            color: #ccc;
+            line-height: 1.6;
+            margin-bottom: 24px;
+        }
+        .welcome-controls {
+            text-align: left;
+            margin: 0 auto 24px auto;
+            max-width: 320px;
+        }
+        .wc-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 6px 0;
+            font-size: 13px;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+        .wc-key {
+            background: rgba(0, 102, 255, 0.2);
+            padding: 2px 10px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-weight: bold;
+            color: #0066FF;
+            font-size: 12px;
+        }
+        .welcome-goal {
+            background: rgba(0, 201, 167, 0.1);
+            border: 1px solid rgba(0, 201, 167, 0.2);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 24px;
+        }
+        .welcome-goal h3 {
+            color: #00C9A7;
+            font-size: 15px;
+            margin-bottom: 8px;
+        }
+        .welcome-goal p {
+            font-size: 13px;
+            color: #ccc;
+            line-height: 1.5;
+        }
+        .welcome-start {
+            background: linear-gradient(135deg, #0066FF, #00C9A7);
+            color: white;
+            border: none;
+            padding: 14px 40px;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .welcome-start:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 102, 255, 0.4);
+        }
+
+        /* ===============================================
+           HUD STYLES
+           =============================================== */
+        #academy-hud {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            pointer-events: none;
+            z-index: 100;
+            color: white;
+            font-size: 13px;
+        }
+        #academy-hud button, #academy-hud a { pointer-events: auto; }
+        .hud-top {
+            position: absolute;
+            top: 12px; left: 12px; right: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .hud-world-info { display: flex; flex-direction: column; }
+        #hud-world-name { font-weight: 700; font-size: 15px; }
+        .hud-skill { font-size: 11px; color: #00C9A7; }
+        .hud-right-section { display: flex; gap: 8px; }
+        .lang-btn, .map-btn {
+            background: rgba(10, 22, 40, 0.7);
+            border: 1px solid rgba(255,255,255,0.2);
+            color: white;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 12px;
+            cursor: pointer;
+            pointer-events: auto;
+        }
+        .lang-btn:hover, .map-btn:hover { border-color: #0066FF; }
+        .hud-bottom-left {
+            position: absolute;
+            bottom: 12px; left: 12px;
+        }
+        .hud-xp-section {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 6px;
+        }
+        .hud-level {
+            font-weight: bold;
+            color: #FFD700;
+            font-size: 14px;
+        }
+        .hud-xp-bar-container {
+            width: 120px;
+            height: 6px;
+            background: rgba(255,255,255,0.15);
+            border-radius: 3px;
+            overflow: hidden;
+        }
+        .hud-xp-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #0066FF, #00C9A7);
+            border-radius: 3px;
+            transition: width 0.5s;
+        }
+        .hud-xp-text { font-size: 11px; color: #aaa; }
+        .hud-badges {
+            display: flex;
+            gap: 4px;
+            margin-bottom: 4px;
+        }
+        .hud-badge {
+            font-size: 16px;
+            filter: drop-shadow(0 0 2px rgba(0,0,0,0.5));
+        }
+        .hud-challenge-count {
+            font-size: 11px;
+            color: #aaa;
+        }
+        .hud-controls {
+            position: absolute;
+            bottom: 12px; right: 12px;
+            font-size: 11px;
+            color: rgba(255,255,255,0.4);
+            text-align: right;
+            line-height: 1.6;
+        }
+
+        /* ===============================================
+           MESSAGE
+           =============================================== */
+        #message {
+            position: absolute;
+            bottom: 120px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(10, 22, 40, 0.8);
+            color: white;
+            padding: 8px 20px;
+            border-radius: 8px;
+            font-size: 14px;
+            opacity: 0;
+            transition: opacity 0.3s;
+            z-index: 110;
+            pointer-events: none;
+            white-space: nowrap;
+        }
+        #message.show { opacity: 1; }
+
+        /* ===============================================
+           MINIMAP
+           =============================================== */
+        #minimap {
+            position: absolute;
+            top: 50px; right: 12px;
+            width: 150px;
+            height: 150px;
+            border: 2px solid rgba(0, 102, 255, 0.3);
+            border-radius: 10px;
+            z-index: 100;
+        }
+
+        /* ===============================================
+           CROSSHAIR (FP mode)
+           =============================================== */
+        #crosshair {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 6px;
+            height: 6px;
+            margin: -3px 0 0 -3px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.5);
+            box-shadow: 0 0 4px rgba(255, 255, 255, 0.3);
+            z-index: 105;
+            pointer-events: none;
+            display: none;
+        }
+
+        /* ===============================================
+           CONTROLS AUTO-HIDE
+           =============================================== */
+        .hud-controls {
+            transition: opacity 1.5s ease !important;
+        }
+        #game-container:hover .hud-controls {
+            opacity: 1 !important;
         }
     </style>
 </head>
 <body>
     <div id="game-container">
         <div id="loading">
-            <h1>🦌 PORO</h1>
-            <p>Taiga Adventure</p>
+            <h1>AI Academy</h1>
+            <p class="subtitle">Leer AI door te spelen</p>
             <div class="loading-bar">
                 <div class="loading-progress"></div>
             </div>
-            <p style="margin-top: 20px; font-size: 14px;">Preparing the Lapland wilderness...</p>
+            <p style="margin-top: 20px; font-size: 14px;">Wereld wordt geladen...</p>
         </div>
 
-        <div id="ui">
-            <div id="stats">
-                <div class="stat-bar">
-                    <label>❤️ Health</label>
-                    <div class="bar-container">
-                        <div id="health-bar" class="bar" style="width: 100%"></div>
-                    </div>
-                </div>
-                <div class="stat-bar">
-                    <label>⚡ Energy</label>
-                    <div class="bar-container">
-                        <div id="energy-bar" class="bar" style="width: 100%"></div>
-                    </div>
-                </div>
-                <div class="stat-bar">
-                    <label>🔥 Warmth</label>
-                    <div class="bar-container">
-                        <div id="warmth-bar" class="bar" style="width: 100%"></div>
-                    </div>
-                </div>
-                <div class="stat-bar">
-                    <label>🍃 Hunger</label>
-                    <div class="bar-container">
-                        <div id="hunger-bar" class="bar" style="width: 100%"></div>
-                    </div>
-                </div>
-                <div id="score">🌟 Lichen: <span id="lichen-count">0</span></div>
-            </div>
-        </div>
-
-        <div id="objectives">
-            <h3>🎯 Objectives</h3>
-            <ul id="objective-list">
-                <li id="obj-explore">Explore the taiga forest</li>
-                <li id="obj-lichen">Collect 10 lichen patches</li>
-                <li id="obj-survive">Survive the cold night</li>
-                <li id="obj-aurora">Witness the Aurora Borealis</li>
-            </ul>
-        </div>
-
-        <div id="controls">
-            <h4>Controls</h4>
-            <p>Mouse - Orbit camera around Poro</p>
-            <p>Scroll - Zoom in/out</p>
-            <p>Arrows/WASD - Move</p>
-            <p>SPACE - Jump</p>
-            <p>SHIFT - Sprint</p>
-            <p>Right Click - Eat lichen</p>
-            <p>V - Talk to NPC</p>
-            <p>C - Camera mode</p>
-            <p>ESC - Exit dialogue</p>
-        </div>
-
-        <canvas id="minimap"></canvas>
-
+        <canvas id="minimap" width="150" height="150"></canvas>
         <div id="message"></div>
-
-        <div id="world-info">RUKA PORRO VOXL - 4000x4000 World</div>
 
         <!-- Dialogue UI -->
         <div id="dialogue-ui">
             <div id="dialogue-box">
-                <div id="dialogue-npc-name">NPC</div>
+                <div id="dialogue-npc-name">Mentor</div>
                 <div id="dialogue-npc-response">...</div>
             </div>
             <div id="dialogue-input-container">
-                <input type="text" id="dialogue-input" placeholder="Type your message or press V to speak..." />
-                <button class="voice-btn" id="voice-btn">V Speak</button>
+                <input type="text" id="dialogue-input" placeholder="Typ je bericht of druk V om te spreken..." />
+                <button class="voice-btn" id="voice-btn">V</button>
             </div>
-            <div id="dialogue-hint">Press ENTER to send | Press V for voice | Press ESC to close</div>
+            <div id="dialogue-hint">ENTER om te verzenden | V voor spraak | ESC om te sluiten</div>
         </div>
     </div>
 
+    <!-- Three.js -->
     <script src="https://unpkg.com/three@0.152.0/build/three.min.js"></script>
+
     <script>
         window.onerror = function(msg, url, line, col, error) {
             const errorDiv = document.createElement('div');
-            errorDiv.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:red;color:white;padding:20px;z-index:9999;max-width:80%;font-family:monospace;';
+            errorDiv.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#c0392b;color:white;padding:20px;z-index:9999;max-width:80%;font-family:monospace;border-radius:10px;';
             errorDiv.innerHTML = '<h3>ERROR:</h3><p>' + msg + '</p><p>File: ' + url + '</p><p>Line: ' + line + '</p>';
             document.body.appendChild(errorDiv);
             console.error('Game Error:', msg, url, line, error);
             return false;
         };
-        console.log('THREE loaded:', typeof THREE !== 'undefined');
-        if(typeof THREE !== 'undefined') console.log('THREE.CapsuleGeometry:', typeof THREE.CapsuleGeometry);
     </script>
-    <script src="ai-engine.js"></script>
-    <script src="game.js"></script>
+
+    <!-- Core -->
+    <script src="js/core/Config.js"></script>
+    <script src="js/core/I18n.js"></script>
+    <script src="js/core/SimplexNoise.js"></script>
+    <script src="js/core/SceneManager.js"></script>
+    <script src="js/core/InputManager.js"></script>
+
+    <!-- World -->
+    <script src="js/world/BiomeConfig.js"></script>
+    <script src="js/world/ChunkManager.js"></script>
+    <script src="js/world/WeatherSystem.js"></script>
+    <script src="js/world/WorldManager.js"></script>
+
+    <!-- AI -->
+    <script src="js/ai/MentorProfiles.js"></script>
+    <script src="js/ai/AIEngine.js"></script>
+
+    <!-- Entities -->
+    <script src="js/entities/Player.js"></script>
+    <script src="js/entities/Camera.js"></script>
+    <script src="js/entities/Birds.js"></script>
+
+    <!-- Systems -->
+    <script src="js/systems/SaveSystem.js"></script>
+    <script src="js/systems/ScoreSystem.js"></script>
+    <script src="js/systems/VoiceInput.js"></script>
+    <script src="js/systems/AudioSystem.js"></script>
+    <script src="js/systems/MentorSystem.js"></script>
+    <script src="js/systems/ChallengeSystem.js"></script>
+    <script src="js/systems/PortalSystem.js"></script>
+    <script src="js/systems/ObjectiveSystem.js"></script>
+
+    <!-- UI -->
+    <script src="js/ui/HUD.js"></script>
+    <script src="js/ui/ChallengeUI.js"></script>
+    <script src="js/ui/NotificationUI.js"></script>
+    <script src="js/ui/WorldMapUI.js"></script>
+    <script src="js/ui/TransitionUI.js"></script>
+    <script src="js/ui/DialogueUI.js"></script>
+    <script src="js/ui/Minimap.js"></script>
+
+    <!-- Game Orchestrator (must be last) -->
+    <script src="js/core/Game.js"></script>
 </body>
 </html>

@@ -191,6 +191,54 @@ function createAPIProxy(app) {
         }
     });
 
+    // Challenge evaluation endpoint (uses Anthropic or Gemini)
+    app.post('/api/evaluate', async (req, res) => {
+        try {
+            const { systemPrompt, studentResponse } = req.body;
+            const userMessage = `Beoordeel dit antwoord van de student:\n\n${studentResponse}`;
+
+            if (API_CONFIG.anthropic.apiKey) {
+                const response = await fetch(API_CONFIG.anthropic.baseUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'x-api-key': API_CONFIG.anthropic.apiKey,
+                        'anthropic-version': '2023-06-01'
+                    },
+                    body: JSON.stringify({
+                        model: API_CONFIG.anthropic.model,
+                        max_tokens: 500,
+                        system: systemPrompt,
+                        messages: [{ role: 'user', content: userMessage }],
+                        stream: false
+                    })
+                });
+                const data = await response.json();
+                res.json({ content: data.content?.[0]?.text || data.content || 'No evaluation available' });
+            } else if (API_CONFIG.gemini.apiKey) {
+                const model = API_CONFIG.gemini.model;
+                const response = await fetch(
+                    `${API_CONFIG.gemini.baseUrl}/${model}:generateContent?key=${API_CONFIG.gemini.apiKey}`,
+                    {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            contents: [{ role: 'user', parts: [{ text: systemPrompt + '\n\n' + userMessage }] }],
+                            generationConfig: { maxOutputTokens: 500, temperature: 0.3 }
+                        })
+                    }
+                );
+                const data = await response.json();
+                res.json({ content: data.candidates?.[0]?.content?.parts?.[0]?.text || 'No evaluation available' });
+            } else {
+                res.status(500).json({ error: 'No AI API configured for evaluation' });
+            }
+        } catch (error) {
+            console.error('Evaluation API error:', error);
+            res.status(500).json({ error: error.message });
+        }
+    });
+
     // API Status endpoint
     app.get('/api/status', (req, res) => {
         res.json({
@@ -200,7 +248,7 @@ function createAPIProxy(app) {
         });
     });
 
-    console.log('API Proxy routes registered');
+    console.log('API Proxy routes registered (AI Academy edition)');
 }
 
 module.exports = { createAPIProxy };
