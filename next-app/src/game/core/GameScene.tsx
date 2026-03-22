@@ -2,10 +2,11 @@
 
 /**
  * GameScene — The complete 3D scene inside the R3F Canvas.
- * Dynamically imported by GameProvider to avoid SSR issues with Three.js/WASM.
+ * Dynamically imported by GameProvider to avoid SSR issues with Three.js.
+ * No physics engine — uses simple movement for maximum compatibility.
  */
 
-import { Suspense, useState, useEffect } from 'react'
+import { Suspense } from 'react'
 import { Canvas } from '@react-three/fiber'
 import { World } from '../scene/World/World'
 import { Porro } from '../scene/Player/Porro'
@@ -14,43 +15,9 @@ import { NPCManager } from '../scene/NPCs/NPCManager'
 import { GlowingCrystal } from '../scene/Items/GlowingCrystal'
 import { GameLoop } from './GameLoop'
 
-/**
- * Wrapper that tries to load Rapier physics.
- * If WASM fails (some browsers/environments), falls back to no-physics mode.
- */
-function PhysicsWrapper({ children }: { children: React.ReactNode }) {
-  const [PhysicsComponent, setPhysicsComponent] = useState<React.ComponentType<{
-    gravity: [number, number, number]
-    children: React.ReactNode
-  }> | null>(null)
-  const [failed, setFailed] = useState(false)
-
-  useEffect(() => {
-    import('@react-three/rapier')
-      .then((mod) => {
-        setPhysicsComponent(() => mod.Physics)
-      })
-      .catch(() => {
-        console.warn('Rapier WASM failed to load — running without physics')
-        setFailed(true)
-      })
-  }, [])
-
-  // While loading or if failed, render children without physics wrapper
-  if (!PhysicsComponent || failed) {
-    return <>{children}</>
-  }
-
-  return (
-    <PhysicsComponent gravity={[0, -20, 0]}>
-      {children}
-    </PhysicsComponent>
-  )
-}
-
 function SceneFallback() {
   return (
-    <mesh>
+    <mesh position={[0, 2, 0]}>
       <boxGeometry args={[1, 1, 1]} />
       <meshStandardMaterial color="#8B5E3C" />
     </mesh>
@@ -69,7 +36,7 @@ export function GameScene() {
         gl.setClearColor('#050b1a')
       }}
     >
-      {/* Ambient + directional for immediate visibility */}
+      {/* Lighting */}
       <ambientLight intensity={0.4} color="#b0c4de" />
       <directionalLight
         position={[50, 80, 30]}
@@ -83,23 +50,21 @@ export function GameScene() {
       <fog attach="fog" args={['#cbd5e1', 80, 300]} />
 
       <Suspense fallback={<SceneFallback />}>
-        <PhysicsWrapper>
-          {/* Game systems tick */}
-          <GameLoop />
+        {/* Game systems tick */}
+        <GameLoop />
 
-          {/* World: terrain, trees, snow, aurora, food */}
-          <World />
+        {/* World: terrain, trees, snow, aurora, food */}
+        <World />
 
-          {/* Player reindeer */}
-          <Porro />
-          <PorroCamera />
+        {/* Player reindeer */}
+        <Porro />
+        <PorroCamera />
 
-          {/* NPCs */}
-          <NPCManager />
+        {/* NPCs */}
+        <NPCManager />
 
-          {/* Collectible crystals */}
-          <GlowingCrystal />
-        </PhysicsWrapper>
+        {/* Collectible crystals */}
+        <GlowingCrystal />
       </Suspense>
     </Canvas>
   )

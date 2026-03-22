@@ -460,7 +460,7 @@ interface MissionStoreState {
   porroCorruption: number
   corruptionLevel: CorruptionLevel
   /** Arbitrary named boolean flags for story gating */
-  storyFlags: Set<string>
+  storyFlags: string[]
   totalXP: number
 
   // ── Actions ──────────────────────────────────────────────────────────────
@@ -536,7 +536,7 @@ export const useMissionStore = create<MissionStoreState>()(
     activeMissionId: null,
     porroCorruption: 0,
     corruptionLevel: 'pure',
-    storyFlags: new Set<string>(),
+    storyFlags: [] as string[],
     totalXP: 0,
 
     // ── Missions ───────────────────────────────────────────────────────────
@@ -652,15 +652,15 @@ export const useMissionStore = create<MissionStoreState>()(
     // ── Story flags ────────────────────────────────────────────────────────
 
     setFlag(flag) {
-      set((s) => { s.storyFlags.add(flag) })
+      set((s) => { if (!s.storyFlags.includes(flag)) s.storyFlags.push(flag) })
     },
 
     clearFlag(flag) {
-      set((s) => { s.storyFlags.delete(flag) })
+      set((s) => { s.storyFlags = s.storyFlags.filter((f) => f !== flag) })
     },
 
     hasFlag(flag) {
-      return get().storyFlags.has(flag)
+      return get().storyFlags.includes(flag)
     },
 
     // ── XP ─────────────────────────────────────────────────────────────────
@@ -678,7 +678,7 @@ export const useMissionStore = create<MissionStoreState>()(
         s.activeMissionId = null
         s.porroCorruption = 0
         s.corruptionLevel = 'pure'
-        s.storyFlags = new Set<string>()
+        s.storyFlags = [] as string[]
         s.totalXP = 0
       })
     },
