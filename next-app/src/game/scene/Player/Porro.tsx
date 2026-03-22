@@ -2,7 +2,7 @@
 
 import { useRef, useEffect, useMemo } from 'react'
 import * as THREE from 'three'
-import { useFrame } from '@react-three/fiber'
+import { useFrame, useThree } from '@react-three/fiber'
 import { usePlayerStore } from '@/game/stores/usePlayerStore'
 import { playerSystem } from '@/game/systems/playerSystem'
 import {
@@ -133,7 +133,7 @@ function PorroMesh({ legPhase }: { legPhase: React.MutableRefObject<number> }) {
   )
 }
 
-// ─── Main player component — simple movement (no physics engine) ─────────────
+// ─── Main player component — camera-relative movement ────────────────────────
 
 export function Porro() {
   const groupRef = useRef<THREE.Group>(null)
@@ -141,6 +141,8 @@ export function Porro() {
   const facingAngle = useRef(0)
   const posRef = useRef(new THREE.Vector3(0, 2, 0))
   const velRef = useRef(new THREE.Vector3(0, 0, 0))
+
+  const { camera } = useThree()
 
   const setPosition = usePlayerStore((s) => s.setPosition)
   const setRotation = usePlayerStore((s) => s.setRotation)
@@ -181,15 +183,44 @@ export function Porro() {
     const right = keys['KeyD'] || keys['ArrowRight']
     const jumpPressed = keys['Space']
 
+    // Raw input: +Z = forward (W), -Z = backward (S), +X = right (D), -X = left (A)
     const moveX = (right ? 1 : 0) - (left ? 1 : 0)
-    const moveZ = (backward ? 1 : 0) - (forward ? 1 : 0)
+    const moveZ = (forward ? 1 : 0) - (backward ? 1 : 0)
     const isMoving = moveX !== 0 || moveZ !== 0
 
-    // Rotate to face movement direction
     if (isMoving) {
-      const targetAngle = Math.atan2(moveX, moveZ)
-      facingAngle.current += (targetAngle - facingAngle.current) * Math.min(1, cappedDelta * 10)
+      // Extract camera yaw from its world matrix — column 2 (forward vector) XZ components
+      // camera.matrixWorld column 2 = (m[8], m[9], m[10]) = camera -Z in world space
+      const m = camera.matrixWorld.elements
+      // Camera forward (into screen) is -Z of camera in world space
+      const camForwardX = -m[8]
+      const camForwardZ = -m[10]
+      // Camera right is +X of camera in world space
+      const camRightX = m[0]
+      const camRightZ = m[2]
+
+      // World-space movement direction = input blended along camera axes
+      const worldMoveX = camForwardX * moveZ + camRightX * moveX
+      const worldMoveZ = camForwardZ * moveZ + camRightZ * moveX
+
+      // World angle the player should face
+      const worldAngle = Math.atan2(worldMoveX, worldMoveZ)
+
+      // Smoothly rotate facing angle — shortest-path wrapping prevents spinning
+      let angleDiff = worldAngle - facingAngle.current
+      while (angleDiff > Math.PI) angleDiff -= Math.PI * 2
+      while (angleDiff < -Math.PI) angleDiff += Math.PI * 2
+      facingAngle.current += angleDiff * Math.min(1, cappedDelta * 10)
+
       group.rotation.y = facingAngle.current
+
+      // Drive velocity along the world-space direction
+      velRef.current.x = Math.sin(worldAngle) * speed
+      velRef.current.z = Math.cos(worldAngle) * speed
+    } else {
+      // Decelerate smoothly when no input
+      velRef.current.x *= 0.85
+      velRef.current.z *= 0.85
     }
 
     // Leg animation
@@ -197,16 +228,6 @@ export function Porro() {
       legPhase.current += cappedDelta * (isSprinting ? 8 : 5)
     } else {
       legPhase.current += cappedDelta * 0.4
-    }
-
-    // Simple movement
-    const angle = facingAngle.current
-    if (isMoving) {
-      velRef.current.x = Math.sin(angle) * speed
-      velRef.current.z = Math.cos(angle) * speed
-    } else {
-      velRef.current.x *= 0.85
-      velRef.current.z *= 0.85
     }
 
     // Jump
