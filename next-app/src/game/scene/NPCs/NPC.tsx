@@ -4,7 +4,7 @@ import { useRef, useMemo } from 'react'
 import * as THREE from 'three'
 import { useFrame } from '@react-three/fiber'
 import { Billboard, Text } from '@react-three/drei'
-import { RigidBody } from '@react-three/rapier'
+// RigidBody removed — NPCs use simple group positioning
 import { usePlayerStore } from '@/game/stores/usePlayerStore'
 import { distanceXZ } from '@/lib/math'
 import type { NPCId } from '@/game/types/game'
@@ -403,9 +403,7 @@ export function NPC({ id, position, color, modelType, trust, name }: NPCProps) {
 
   return (
     <group ref={groupRef} position={position}>
-      <RigidBody type="kinematicPosition" colliders="hull">
-        <NPCBody modelType={modelType} color={color} glowIntensity={glowRef.current} />
-      </RigidBody>
+      <NPCBody modelType={modelType} color={color} glowIntensity={glowRef.current} />
 
       {/* Trust indicator — always faces camera */}
       <Billboard position={[0, 2.8, 0]} follow lockX={false} lockY={false} lockZ={false}>

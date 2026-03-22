@@ -5,11 +5,15 @@
  * and the DOM UI overlay side by side in the same container.
  */
 
-import { useEffect } from 'react'
-import { GameCanvas } from './GameCanvas'
-import { GameLoop } from './GameLoop'
+import { useEffect, useState } from 'react'
+import dynamic from 'next/dynamic'
 import { GameUI } from '../ui/GameUI'
 import { useUIStore } from '../stores/useUIStore'
+
+// Dynamic import for the entire 3D scene to avoid SSR issues with Three.js / WASM
+const GameScene = dynamic(() => import('./GameScene').then((m) => m.GameScene), {
+  ssr: false,
+})
 
 // Simulated asset loading — replace with real asset loader integration
 function useSimulatedLoading() {
@@ -42,16 +46,17 @@ function useSimulatedLoading() {
 
 export function GameProvider() {
   useSimulatedLoading()
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   return (
     // Relative container so the overlay sits above the canvas
     <div className="relative w-full h-full" style={{ background: '#050b1a' }}>
-      {/* R3F Canvas */}
-      <GameCanvas>
-        {/* Game systems run inside the Canvas render loop */}
-        <GameLoop />
-        {/* 3D scene objects go here — terrain, NPCs, player, etc. */}
-      </GameCanvas>
+      {/* 3D scene — dynamically imported, only renders client-side */}
+      {mounted && <GameScene />}
 
       {/* DOM UI overlay — lives outside Canvas, same stacking context */}
       <GameUI />

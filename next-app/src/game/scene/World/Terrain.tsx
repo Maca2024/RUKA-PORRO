@@ -2,7 +2,6 @@
 
 import { useRef, useMemo } from 'react'
 import * as THREE from 'three'
-import { RigidBody } from '@react-three/rapier'
 import { WORLD_SIZE } from '@/game/core/constants'
 
 // Lightweight seeded pseudo-random for stable terrain
@@ -111,15 +110,13 @@ export function Terrain() {
 
   return (
     <group>
-      {/* Physics collider wraps the visual mesh */}
-      <RigidBody type="fixed" colliders={false}>
-        <mesh
-          ref={meshRef}
-          geometry={geometry}
-          material={material}
-          receiveShadow
-        />
-      </RigidBody>
+      {/* Terrain mesh */}
+      <mesh
+        ref={meshRef}
+        geometry={geometry}
+        material={material}
+        receiveShadow
+      />
 
       {/* Frozen lake surface */}
       <mesh

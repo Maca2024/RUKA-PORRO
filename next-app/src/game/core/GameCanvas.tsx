@@ -2,7 +2,6 @@
 
 import { Suspense, type ReactNode } from 'react'
 import { Canvas } from '@react-three/fiber'
-import { Physics } from '@react-three/rapier'
 
 interface GameCanvasProps {
   children?: ReactNode
@@ -22,9 +21,7 @@ export function GameCanvas({ children }: GameCanvasProps) {
       style={{ width: '100%', height: '100%' }}
     >
       <Suspense fallback={<LoadingFallback />}>
-        <Physics gravity={[0, -20, 0]}>
-          {children}
-        </Physics>
+        {children}
       </Suspense>
     </Canvas>
   )

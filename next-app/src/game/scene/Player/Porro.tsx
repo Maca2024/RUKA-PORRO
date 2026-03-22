@@ -1,10 +1,8 @@
 'use client'
 
-import { useRef, useEffect, useMemo } from 'react'
+import { useRef, useEffect, useMemo, useState, type ComponentType } from 'react'
 import * as THREE from 'three'
 import { useFrame } from '@react-three/fiber'
-import { RigidBody, CapsuleCollider } from '@react-three/rapier'
-import type { RapierRigidBody } from '@react-three/rapier'
 import { usePlayerStore } from '@/game/stores/usePlayerStore'
 import { playerSystem } from '@/game/systems/playerSystem'
 import {
@@ -12,6 +10,29 @@ import {
   PLAYER_SPRINT_SPEED,
   PLAYER_JUMP_FORCE,
 } from '@/game/core/constants'
+
+// Dynamic Rapier imports — may fail on some platforms
+let RigidBody: ComponentType<Record<string, unknown>> | null = null
+let CapsuleCollider: ComponentType<Record<string, unknown>> | null = null
+let rapierLoaded = false
+
+if (typeof window !== 'undefined') {
+  import('@react-three/rapier')
+    .then((mod) => {
+      RigidBody = mod.RigidBody as unknown as ComponentType<Record<string, unknown>>
+      CapsuleCollider = mod.CapsuleCollider as unknown as ComponentType<Record<string, unknown>>
+      rapierLoaded = true
+    })
+    .catch(() => {
+      console.warn('Rapier not available — using simple movement')
+    })
+}
+
+interface RapierRigidBody {
+  linvel(): { x: number; y: number; z: number }
+  setLinvel(v: { x: number; y: number; z: number }, wake: boolean): void
+  translation(): { x: number; y: number; z: number }
+}
 
 // ─── Keyboard state (module-level, no re-render on change) ───────────────────
 
@@ -204,21 +225,14 @@ export function Porro() {
     }
   }, [])
 
-  useFrame((state, delta) => {
-    const rb = rigidBodyRef.current
+  // Simple position state for non-physics fallback
+  const posRef = useRef(new THREE.Vector3(0, 2, 0))
+  const velRef = useRef(new THREE.Vector3(0, 0, 0))
+
+  useFrame((_state, delta) => {
     const group = groupRef.current
-    if (!rb || !group || isDead || isInDialogue) return
+    if (!group || isDead || isInDialogue) return
 
-    // ── Grounded check via velocity ───────────────────────────────────────────
-    const vel = rb.linvel()
-    const wasGrounded = isGroundedRef.current
-    // Consider grounded when vertical velocity is near zero and we were previously on ground
-    // or transitioning from falling
-    isGroundedRef.current = Math.abs(vel.y) < 0.5 || (vel.y > -0.1 && prevVelY.current <= vel.y)
-    prevVelY.current = vel.y
-    setGrounded(isGroundedRef.current)
-
-    // ── Input ──────────────────────────────────────────────────────────────────
     const isSprinting = (keys['ShiftLeft'] || keys['ShiftRight']) && usePlayerStore.getState().energy > 0
     setSprinting(isSprinting)
 
@@ -245,59 +259,101 @@ export function Porro() {
     if (isMoving) {
       legPhase.current += delta * (isSprinting ? 8 : 5)
     } else {
-      // Gentle idle sway
       legPhase.current += delta * 0.4
     }
 
-    // Apply horizontal velocity (world-space WASD)
-    const angle = facingAngle.current
-    let vx = vel.x
-    let vz = vel.z
+    // Physics mode: use RigidBody
+    const rb = rigidBodyRef.current
+    if (rb && rapierLoaded) {
+      const vel = rb.linvel()
+      isGroundedRef.current = Math.abs(vel.y) < 0.5 || (vel.y > -0.1 && prevVelY.current <= vel.y)
+      prevVelY.current = vel.y
+      setGrounded(isGroundedRef.current)
 
-    if (isMoving) {
-      vx = Math.sin(angle) * speed
-      vz = Math.cos(angle) * speed
+      const angle = facingAngle.current
+      let vx = isMoving ? Math.sin(angle) * speed : vel.x * 0.85
+      let vz = isMoving ? Math.cos(angle) * speed : vel.z * 0.85
+      let vy = vel.y
+
+      if (jumpPressed && isGroundedRef.current) {
+        vy = PLAYER_JUMP_FORCE
+        setJumping(true)
+        isGroundedRef.current = false
+      } else if (Math.abs(vel.y) < 0.2) {
+        setJumping(false)
+      }
+
+      rb.setLinvel({ x: vx, y: vy, z: vz }, true)
+
+      const pos = rb.translation()
+      setPosition({ x: pos.x, y: pos.y, z: pos.z })
+      setRotation(facingAngle.current)
+      group.position.set(pos.x, pos.y - 1.1, pos.z)
     } else {
-      // Friction
-      vx *= 0.85
-      vz *= 0.85
+      // Simple movement fallback (no physics engine)
+      setGrounded(true)
+      const angle = facingAngle.current
+
+      if (isMoving) {
+        velRef.current.x = Math.sin(angle) * speed
+        velRef.current.z = Math.cos(angle) * speed
+      } else {
+        velRef.current.x *= 0.85
+        velRef.current.z *= 0.85
+      }
+
+      // Simple jump
+      if (jumpPressed && posRef.current.y <= 2.1) {
+        velRef.current.y = PLAYER_JUMP_FORCE * 0.5
+        setJumping(true)
+      }
+      velRef.current.y -= 20 * delta // gravity
+      posRef.current.x += velRef.current.x * delta
+      posRef.current.y += velRef.current.y * delta
+      posRef.current.z += velRef.current.z * delta
+
+      // Floor clamp
+      if (posRef.current.y < 2) {
+        posRef.current.y = 2
+        velRef.current.y = 0
+        setJumping(false)
+      }
+
+      setPosition({ x: posRef.current.x, y: posRef.current.y, z: posRef.current.z })
+      setRotation(facingAngle.current)
+      group.position.set(posRef.current.x, posRef.current.y - 1.1, posRef.current.z)
     }
-
-    // Jump
-    let vy = vel.y
-    if (jumpPressed && isGroundedRef.current) {
-      vy = PLAYER_JUMP_FORCE
-      setJumping(true)
-      isGroundedRef.current = false
-    } else if (Math.abs(vel.y) < 0.2) {
-      setJumping(false)
-    }
-
-    rb.setLinvel({ x: vx, y: vy, z: vz }, true)
-
-    // Sync store position
-    const pos = rb.translation()
-    setPosition({ x: pos.x, y: pos.y, z: pos.z })
-    setRotation(facingAngle.current)
-
-    // Sync visual group position
-    group.position.set(pos.x, pos.y - 1.1, pos.z)
   })
+
+  // Render with or without physics
+  const [hasRapier, setHasRapier] = useState(false)
+  useEffect(() => {
+    const check = () => {
+      if (rapierLoaded) { setHasRapier(true); return }
+      setTimeout(check, 200)
+    }
+    check()
+    // Stop checking after 3s
+    const timeout = setTimeout(() => setHasRapier(false), 3000)
+    return () => clearTimeout(timeout)
+  }, [])
 
   return (
     <>
-      <RigidBody
-        ref={rigidBodyRef}
-        type="dynamic"
-        position={[0, 3, 0]}
-        enabledRotations={[false, false, false]}
-        linearDamping={0.5}
-        angularDamping={1}
-        mass={80}
-        colliders={false}
-      >
-        <CapsuleCollider args={[0.5, 0.5]} />
-      </RigidBody>
+      {hasRapier && RigidBody && CapsuleCollider ? (
+        <RigidBody
+          ref={rigidBodyRef}
+          type="dynamic"
+          position={[0, 3, 0]}
+          enabledRotations={[false, false, false]}
+          linearDamping={0.5}
+          angularDamping={1}
+          mass={80}
+          colliders={false}
+        >
+          <CapsuleCollider args={[0.5, 0.5]} />
+        </RigidBody>
+      ) : null}
 
       <group ref={groupRef}>
         <PorroMesh legPhase={legPhase} />
